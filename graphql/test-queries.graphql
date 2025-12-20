@@ -1,0 +1,280 @@
+# Mesh v2 GraphQL テストクエリサンプル
+
+# ============================================
+# イントロスペクション
+# ============================================
+
+# スキーマの確認
+query IntrospectionQuery {
+  __schema {
+    queryType {
+      name
+    }
+    mutationType {
+      name
+    }
+    subscriptionType {
+      name
+    }
+  }
+}
+
+# 利用可能なQueryの一覧
+query ListQueries {
+  __schema {
+    queryType {
+      fields {
+        name
+        description
+        args {
+          name
+          type {
+            name
+            kind
+          }
+        }
+      }
+    }
+  }
+}
+
+# ============================================
+# Mutations（Phase 2でResolver実装後にテスト可能）
+# ============================================
+
+# グループの作成
+mutation CreateGroup {
+  createGroup(
+    name: "テストグループ1"
+    hostId: "host-001"
+    domain: "test-domain"
+  ) {
+    id
+    domain
+    fullId
+    name
+    hostId
+    createdAt
+  }
+}
+
+# グループの作成（domain未指定、自動取得）
+mutation CreateGroupAutoDetectDomain {
+  createGroup(
+    name: "自動検出グループ"
+    hostId: "host-002"
+  ) {
+    id
+    domain
+    fullId
+    name
+    hostId
+    createdAt
+  }
+}
+
+# グループへの参加
+mutation JoinGroup {
+  joinGroup(
+    groupId: "group-001"
+    domain: "test-domain"
+    nodeId: "node-001"
+  ) {
+    id
+    name
+    groupId
+    domain
+  }
+}
+
+# グループからの退出
+mutation LeaveGroup {
+  leaveGroup(
+    groupId: "group-001"
+    domain: "test-domain"
+    nodeId: "node-001"
+  ) {
+    id
+    name
+    groupId
+    domain
+  }
+}
+
+# ノードデータの送信
+mutation ReportData {
+  reportDataByNode(
+    groupId: "group-001"
+    domain: "test-domain"
+    nodeId: "node-001"
+    data: [
+      { key: "temperature", value: "25.5" }
+      { key: "humidity", value: "60" }
+      { key: "pressure", value: "1013" }
+    ]
+  ) {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+
+# イベントの発火
+mutation FireEvent {
+  fireEventByNode(
+    groupId: "group-001"
+    domain: "test-domain"
+    nodeId: "node-001"
+    eventName: "button_pressed"
+    payload: "{\"button\": \"A\", \"count\": 5}"
+  ) {
+    name
+    firedByNodeId
+    groupId
+    domain
+    payload
+    timestamp
+  }
+}
+
+# ============================================
+# Queries（Phase 2でResolver実装後にテスト可能）
+# ============================================
+
+# Domain内のグループ一覧取得
+query ListGroupsByDomain {
+  listGroupsByDomain(domain: "test-domain") {
+    id
+    domain
+    fullId
+    name
+    hostId
+    createdAt
+  }
+}
+
+# Domain自動検出でグループ一覧取得
+query ListGroupsByDomainAutoDetect {
+  listGroupsByDomain {
+    id
+    domain
+    fullId
+    name
+    hostId
+    createdAt
+  }
+}
+
+# グループの取得
+query GetGroup {
+  getGroup(groupId: "group-001", domain: "test-domain") {
+    id
+    domain
+    fullId
+    name
+    hostId
+    createdAt
+  }
+}
+
+# NodeStatusの取得
+query GetNodeStatus {
+  getNodeStatus(nodeId: "node-001") {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+
+# グループ内の全NodeStatus取得
+query ListGroupStatuses {
+  listGroupStatuses(groupId: "group-001", domain: "test-domain") {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+
+# グループ内の全Node取得
+query ListNodesInGroup {
+  listNodesInGroup(groupId: "group-001", domain: "test-domain") {
+    id
+    name
+    groupId
+    domain
+  }
+}
+
+# ============================================
+# Subscriptions（Phase 2でResolver実装後にテスト可能）
+# ============================================
+
+# グループ内のデータ更新を購読
+subscription OnDataUpdate {
+  onDataUpdateInGroup(groupId: "group-001", domain: "test-domain") {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+
+# グループ内のイベントを購読
+subscription OnEvent {
+  onEventInGroup(groupId: "group-001", domain: "test-domain") {
+    name
+    firedByNodeId
+    groupId
+    domain
+    payload
+    timestamp
+  }
+}
+
+# グループ解散通知を購読
+subscription OnGroupDissolve {
+  onGroupDissolve(groupId: "group-001", domain: "test-domain") {
+    groupId
+    domain
+    message
+  }
+}
+
+# ============================================
+# 複合テストシナリオ
+# ============================================
+
+# シナリオ1: グループ作成 → 参加 → データ送信
+# 1. CreateGroup mutation を実行
+# 2. JoinGroup mutation を実行
+# 3. ReportData mutation を実行
+# 4. ListGroupStatuses query で確認
+
+# シナリオ2: イベント通知のテスト
+# 1. Subscription OnEvent を開始
+# 2. 別のタブで FireEvent mutation を実行
+# 3. Subscription でリアルタイム通知を受信
+
+# シナリオ3: Domain自動検出のテスト
+# 1. CreateGroupAutoDetectDomain mutation を実行（domain未指定）
+# 2. レスポンスのdomainフィールドでソースIPが設定されているか確認
+# 3. ListGroupsByDomainAutoDetect query で同じdomainのグループが取得できるか確認
