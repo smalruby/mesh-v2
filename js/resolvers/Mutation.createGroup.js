@@ -6,9 +6,9 @@ import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const { name, hostId, domain } = ctx.args;
 
-  // Domain決定: 引数 > ソースIP
-  const sourceIp = ctx.identity.sourceIp[0];
-  const actualDomain = domain || sourceIp;
+  // Domain決定: 引数 > ソースIP > デフォルト値
+  // domain引数が指定されていればsourceIPにアクセスしない
+  const actualDomain = domain || ctx.identity?.sourceIp?.[0] || 'default';
 
   // Domain文字列のバリデーション（最大256文字）
   if (actualDomain.length > 256) {
