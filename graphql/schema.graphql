@@ -1,0 +1,131 @@
+# --- データの基本構造 ---
+
+input SensorDataInput {
+  key: String!
+  value: String!
+}
+
+type SensorData {
+  key: String!
+  value: String!
+}
+
+# --- 主要エンティティ ---
+
+type Group {
+  id: ID!           # group_id部分のみ
+  domain: String!   # domain部分（グローバルIP or 任意文字列、最大256文字）
+  fullId: String!   # {group_id}@{domain}の完全なID
+  name: String!
+  hostId: ID!
+  createdAt: AWSDateTime!
+}
+
+type Node {
+  id: ID!
+  name: String!
+  groupId: ID
+  domain: String    # 所属しているdomain
+}
+
+type NodeStatus {
+  nodeId: ID!
+  groupId: ID!
+  domain: String!
+  data: [SensorData!]!
+  timestamp: AWSDateTime!
+}
+
+type Event {
+  name: String!
+  firedByNodeId: ID!
+  groupId: ID!
+  domain: String!
+  payload: String
+  timestamp: AWSDateTime!
+}
+
+type GroupDissolvePayload {
+  groupId: ID!
+  domain: String!
+  message: String!
+}
+
+# --- クエリ (Queries) ---
+
+type Query {
+  # Domain内のグループ一覧取得（スキャン機能）
+  # domain未指定時はリクエスト元グローバルIPを使用
+  listGroupsByDomain(domain: String): [Group!]!
+
+  # グループ取得
+  getGroup(groupId: ID!, domain: String): Group
+
+  # NodeStatus取得
+  getNodeStatus(nodeId: ID!): NodeStatus
+
+  # グループ内の全NodeStatus取得
+  listGroupStatuses(groupId: ID!, domain: String!): [NodeStatus!]!
+
+  # グループ内の全Node取得
+  listNodesInGroup(groupId: ID!, domain: String!): [Node!]!
+}
+
+# --- ミューテーション (Mutations) ---
+
+type Mutation {
+  # グループ管理
+  # domain未指定時はリクエスト元グローバルIPを使用
+  createGroup(
+    name: String!
+    hostId: ID!
+    domain: String
+  ): Group!
+
+  joinGroup(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+  ): Node!
+
+  leaveGroup(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+  ): Node
+
+  # データ通信
+  reportDataByNode(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+    data: [SensorDataInput!]!
+  ): NodeStatus!
+
+  fireEventByNode(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+    eventName: String!
+    payload: String
+  ): Event!
+}
+
+# --- サブスクリプション (Subscriptions) ---
+
+type Subscription {
+  onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus!
+    @aws_subscribe(mutations: ["reportDataByNode"])
+
+  onEventInGroup(groupId: ID!, domain: String!): Event!
+    @aws_subscribe(mutations: ["fireEventByNode"])
+
+  onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload!
+    @aws_subscribe(mutations: ["leaveGroup"])
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
