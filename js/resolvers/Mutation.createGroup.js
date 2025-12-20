@@ -6,9 +6,14 @@ import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const { name, hostId, domain } = ctx.args;
 
-  // Domain決定: 引数 > ソースIP > デフォルト値
+  // Domain決定: 引数 > ソースIP
   // domain引数が指定されていればsourceIPにアクセスしない
-  const actualDomain = domain || ctx.identity?.sourceIp?.[0] || 'default';
+  const actualDomain = domain || ctx.identity?.sourceIp?.[0];
+
+  // domainが取得できない場合はエラー
+  if (!actualDomain) {
+    util.error('Domain must be specified or source IP must be available', 'ValidationError');
+  }
 
   // Domain文字列のバリデーション（最大256文字）
   if (actualDomain.length > 256) {

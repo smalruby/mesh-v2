@@ -4,9 +4,14 @@
 import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
-  // Domain決定: 引数 > ソースIP > デフォルト値
+  // Domain決定: 引数 > ソースIP
   // domain引数が指定されていればsourceIPにアクセスしない
-  const domain = ctx.args.domain || ctx.identity?.sourceIp?.[0] || 'default';
+  const domain = ctx.args.domain || ctx.identity?.sourceIp?.[0];
+
+  // domainが取得できない場合はエラー
+  if (!domain) {
+    util.error('Domain must be specified or source IP must be available', 'ValidationError');
+  }
 
   return {
     operation: 'Query',
