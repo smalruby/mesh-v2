@@ -243,26 +243,43 @@ curl -X POST "$APPSYNC_ENDPOINT" \
 # テーブルの詳細を確認
 aws dynamodb describe-table --table-name MeshV2Table
 
-# GSIの確認
+# GSIの確認（オプション1: JSON形式で詳細表示 - 推奨）
 aws dynamodb describe-table --table-name MeshV2Table \
-  --query 'Table.GlobalSecondaryIndexes[*].[IndexName,KeySchema]' \
+  --query 'Table.GlobalSecondaryIndexes[*].{IndexName:IndexName,KeySchema:KeySchema}' \
+  --output json
+
+# GSIの確認（オプション2: テーブル形式でインデックス名のみ）
+aws dynamodb describe-table --table-name MeshV2Table \
+  --query 'Table.GlobalSecondaryIndexes[*].IndexName' \
   --output table
 ```
 
-期待される出力:
+期待される出力（オプション1: JSON形式）:
+```json
+[
+  {
+    "IndexName": "GroupIdIndex",
+    "KeySchema": [
+      {
+        "AttributeName": "gsi_pk",
+        "KeyType": "HASH"
+      },
+      {
+        "AttributeName": "gsi_sk",
+        "KeyType": "RANGE"
+      }
+    ]
+  }
+]
 ```
-----------------------------------------------------
-|              DescribeTable                       |
-+--------------------------------------------------+
-||                  GroupIdIndex                  ||
-||------------------------------------------------||
-|||               KeySchema                      |||
-||+----------------------+-----------------------+||
-|||  AttributeName       |  KeyType             |||
-||+----------------------+-----------------------+||
-|||  gsi_pk              |  HASH                |||
-|||  gsi_sk              |  RANGE               |||
-||+----------------------+-----------------------+||
+
+期待される出力（オプション2: テーブル形式）:
+```
+-----------------
+|DescribeTable  |
++---------------+
+|  GroupIdIndex |
++---------------+
 ```
 
 ## 7. CloudWatch Logsの確認
