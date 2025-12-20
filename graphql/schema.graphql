@@ -112,16 +112,17 @@ type Mutation {
 }
 
 # --- サブスクリプション (Subscriptions) ---
+# Note: Resolvers will be implemented in Phase 2
 
 type Subscription {
+  # グループ内のデータ更新を購読
   onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus!
-    @aws_subscribe(mutations: ["reportDataByNode"])
 
+  # グループ内のイベントを購読
   onEventInGroup(groupId: ID!, domain: String!): Event!
-    @aws_subscribe(mutations: ["fireEventByNode"])
 
+  # グループ解散通知を購読
   onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload!
-    @aws_subscribe(mutations: ["leaveGroup"])
 }
 
 schema {
