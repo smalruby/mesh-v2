@@ -90,12 +90,41 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupsByDomain.js'))
     });
 
-    // Mutation: createGroup
-    dynamoDbDataSource.createResolver('CreateGroupResolver', {
+    // Mutation: createGroup (Pipeline Resolver for idempotency)
+    // Function 1: Check if group already exists for this hostId + domain
+    const checkExistingGroupFunction = new appsync.AppsyncFunction(this, 'CheckExistingGroupFunction', {
+      name: 'checkExistingGroup',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/checkExistingGroup.js'))
+    });
+
+    // Function 2: Create group if not exists, or return existing group
+    const createGroupIfNotExistsFunction = new appsync.AppsyncFunction(this, 'CreateGroupIfNotExistsFunction', {
+      name: 'createGroupIfNotExists',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/createGroupIfNotExists.js'))
+    });
+
+    // Pipeline Resolver: createGroup
+    new appsync.Resolver(this, 'CreateGroupPipelineResolver', {
+      api: this.api,
       typeName: 'Mutation',
       fieldName: 'createGroup',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.createGroup.js'))
+      pipelineConfig: [checkExistingGroupFunction, createGroupIfNotExistsFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
     });
 
     // Mutation: joinGroup

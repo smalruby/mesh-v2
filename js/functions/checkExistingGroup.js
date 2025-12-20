@@ -1,0 +1,63 @@
+// checkExistingGroup Pipeline Function
+// hostId + domain の組み合わせで既存のグループをチェック
+
+import { util } from '@aws-appsync/utils';
+
+export function request(ctx) {
+  const { hostId, domain } = ctx.args;
+
+  // Domain決定: 引数 > ソースIP
+  const actualDomain = domain || ctx.identity?.sourceIp?.[0];
+
+  // domainが取得できない場合はエラー
+  if (!actualDomain) {
+    util.error('Domain must be specified or source IP must be available', 'ValidationError');
+  }
+
+  // 既存グループの検索
+  return {
+    operation: 'Query',
+    query: {
+      expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      expressionValues: util.dynamodb.toMapValues({
+        ':pk': `DOMAIN#${actualDomain}`,
+        ':sk_prefix': 'GROUP#'
+      })
+    },
+    filter: {
+      expression: 'hostId = :hostId',
+      expressionValues: util.dynamodb.toMapValues({
+        ':hostId': hostId
+      })
+    }
+  };
+}
+
+export function response(ctx) {
+  if (ctx.error) {
+    util.error(ctx.error.message, ctx.error.type);
+  }
+
+  // 既存グループが見つかった場合は最初のものを返す
+  // METADATAサフィックスを持つアイテムを抽出
+  const existingGroups = ctx.result.items
+    .filter(item => item.sk.endsWith('#METADATA'));
+
+  if (existingGroups.length > 0) {
+    // ctx.stashに既存グループを保存（次のFunction用）
+    ctx.stash.existingGroup = existingGroups[0];
+
+    // 既存グループを次のFunctionに渡す
+    return {
+      id: existingGroups[0].id,
+      domain: existingGroups[0].domain,
+      fullId: existingGroups[0].fullId,
+      name: existingGroups[0].name,
+      hostId: existingGroups[0].hostId,
+      createdAt: existingGroups[0].createdAt
+    };
+  }
+
+  // 既存グループがない場合はnullを返す
+  return null;
+}

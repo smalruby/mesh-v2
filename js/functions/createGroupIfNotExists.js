@@ -1,0 +1,79 @@
+// createGroupIfNotExists Pipeline Function
+// 既存グループがない場合のみ新規作成
+
+import { util } from '@aws-appsync/utils';
+
+export function request(ctx) {
+  // ctx.stashに既存グループがある場合は、GetItemで取得（有効なoperationを返すため）
+  if (ctx.stash.existingGroup) {
+    return {
+      operation: 'GetItem',
+      key: util.dynamodb.toMapValues({
+        pk: ctx.stash.existingGroup.pk,
+        sk: ctx.stash.existingGroup.sk
+      })
+    };
+  }
+
+  // 新規グループ作成
+  const { name, hostId, domain } = ctx.args;
+  const actualDomain = domain || ctx.identity?.sourceIp?.[0];
+
+  // Domain文字列のバリデーション（最大256文字）
+  if (actualDomain.length > 256) {
+    util.error('Domain must be 256 characters or less', 'ValidationError');
+  }
+
+  // グループID生成
+  const groupId = util.autoId();
+  const fullId = `${groupId}@${actualDomain}`;
+  const now = util.time.nowISO8601();
+
+  return {
+    operation: 'PutItem',
+    key: util.dynamodb.toMapValues({
+      pk: `DOMAIN#${actualDomain}`,
+      sk: `GROUP#${groupId}#METADATA`
+    }),
+    attributeValues: util.dynamodb.toMapValues({
+      id: groupId,
+      domain: actualDomain,
+      fullId: fullId,
+      name: name,
+      hostId: hostId,
+      createdAt: now,
+      // GSI用（groupId -> domain の逆引き検索）
+      gsi_pk: `GROUP#${groupId}`,
+      gsi_sk: `DOMAIN#${actualDomain}`
+    })
+  };
+}
+
+export function response(ctx) {
+  // エラーチェック
+  if (ctx.error) {
+    util.error(ctx.error.message, ctx.error.type);
+  }
+
+  // ctx.stashに既存グループがある場合はそれを返す
+  if (ctx.stash.existingGroup) {
+    return {
+      id: ctx.stash.existingGroup.id,
+      domain: ctx.stash.existingGroup.domain,
+      fullId: ctx.stash.existingGroup.fullId,
+      name: ctx.stash.existingGroup.name,
+      hostId: ctx.stash.existingGroup.hostId,
+      createdAt: ctx.stash.existingGroup.createdAt
+    };
+  }
+
+  // 新規作成されたグループを返す
+  return {
+    id: ctx.result.id,
+    domain: ctx.result.domain,
+    fullId: ctx.result.fullId,
+    name: ctx.result.name,
+    hostId: ctx.result.hostId,
+    createdAt: ctx.result.createdAt
+  };
+}
