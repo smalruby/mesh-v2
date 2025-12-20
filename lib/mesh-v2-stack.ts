@@ -80,6 +80,32 @@ export class MeshV2Stack extends cdk.Stack {
       this.table
     );
 
+    // Resolvers for Phase 2-1: Group Management
+
+    // Query: listGroupsByDomain
+    dynamoDbDataSource.createResolver('ListGroupsByDomainResolver', {
+      typeName: 'Query',
+      fieldName: 'listGroupsByDomain',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupsByDomain.js'))
+    });
+
+    // Mutation: createGroup
+    dynamoDbDataSource.createResolver('CreateGroupResolver', {
+      typeName: 'Mutation',
+      fieldName: 'createGroup',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.createGroup.js'))
+    });
+
+    // Mutation: joinGroup
+    dynamoDbDataSource.createResolver('JoinGroupResolver', {
+      typeName: 'Mutation',
+      fieldName: 'joinGroup',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.joinGroup.js'))
+    });
+
     // Output API endpoint
     new cdk.CfnOutput(this, 'GraphQLApiEndpoint', {
       value: this.api.graphqlUrl,
