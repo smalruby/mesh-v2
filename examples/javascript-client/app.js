@@ -55,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update UI
   updateUI();
 
+  // Start rate status update interval
+  setInterval(updateRateStatus, 1000);
+
   console.log('Application ready!');
 });
 
@@ -712,6 +715,3 @@ function showSuccess(elementId, message) {
     el.style.display = 'none';
   }, 3000);
 }
-
-// Update rate status every second
-setInterval(updateRateStatus, 1000);
