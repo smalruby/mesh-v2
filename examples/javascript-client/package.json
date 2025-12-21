@@ -1,0 +1,25 @@
+{
+  "name": "mesh-v2-javascript-client",
+  "version": "0.1.0",
+  "description": "JavaScript prototype client for Mesh v2 integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "mesh",
+    "graphql",
+    "appsync",
+    "websocket"
+  ],
+  "author": "Smalruby Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
