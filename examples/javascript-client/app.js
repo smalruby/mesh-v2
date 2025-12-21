@@ -220,6 +220,20 @@ async function handleCreateGroup() {
     // Join the created group automatically
     state.currentGroup = group;
 
+    // Send initial sensor data to create NodeStatus entry
+    const initialData = [
+      { key: 'temperature', value: state.sensorData.temperature.toString() },
+      { key: 'brightness', value: state.sensorData.brightness.toString() },
+      { key: 'distance', value: state.sensorData.distance.toString() }
+    ];
+
+    await state.client.reportDataByNode(
+      state.currentNodeId,
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      initialData
+    );
+
     // Subscribe to data updates from other nodes
     state.dataSubscriptionId = state.client.subscribeToDataUpdates(
       state.currentGroup.id,
@@ -331,6 +345,20 @@ async function handleJoinGroup() {
     console.log('Joined group:', result);
 
     state.currentGroup = state.selectedGroup;
+
+    // Send initial sensor data to create NodeStatus entry
+    const initialData = [
+      { key: 'temperature', value: state.sensorData.temperature.toString() },
+      { key: 'brightness', value: state.sensorData.brightness.toString() },
+      { key: 'distance', value: state.sensorData.distance.toString() }
+    ];
+
+    await state.client.reportDataByNode(
+      state.currentNodeId,
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      initialData
+    );
 
     // Subscribe to data updates from other nodes
     state.dataSubscriptionId = state.client.subscribeToDataUpdates(

@@ -361,6 +361,14 @@ class MeshClient {
       },
       error: (error) => {
         console.error('Subscription error:', error);
+        if (error.errors && error.errors.length > 0) {
+          console.error('GraphQL errors:', error.errors);
+          error.errors.forEach(err => {
+            console.error('- Error:', err.message);
+            if (err.path) console.error('  Path:', err.path);
+            if (err.locations) console.error('  Locations:', err.locations);
+          });
+        }
       }
     });
 
@@ -405,6 +413,14 @@ class MeshClient {
       },
       error: (error) => {
         console.error('Event subscription error:', error);
+        if (error.errors && error.errors.length > 0) {
+          console.error('GraphQL errors:', error.errors);
+          error.errors.forEach(err => {
+            console.error('- Error:', err.message);
+            if (err.path) console.error('  Path:', err.path);
+            if (err.locations) console.error('  Locations:', err.locations);
+          });
+        }
       }
     });
 
@@ -446,6 +462,14 @@ class MeshClient {
       },
       error: (error) => {
         console.error('Dissolve subscription error:', error);
+        if (error.errors && error.errors.length > 0) {
+          console.error('GraphQL errors:', error.errors);
+          error.errors.forEach(err => {
+            console.error('- Error:', err.message);
+            if (err.path) console.error('  Path:', err.path);
+            if (err.locations) console.error('  Locations:', err.locations);
+          });
+        }
       }
     });
 
