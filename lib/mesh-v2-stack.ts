@@ -80,6 +80,9 @@ export class MeshV2Stack extends cdk.Stack {
           },
         },
       },
+      environmentVariables: {
+        TABLE_NAME: this.table.tableName,
+      },
       xrayEnabled: true,
       logConfig: {
         fieldLogLevel: appsync.FieldLogLevel.ALL,
@@ -95,6 +98,9 @@ export class MeshV2Stack extends cdk.Stack {
       'MeshV2TableDataSource',
       this.table
     );
+
+    // Grant additional permissions for TransactWriteItems
+    this.table.grantReadWriteData(dynamoDbDataSource.grantPrincipal);
 
     // Resolvers for Phase 2-1: Group Management
 
@@ -149,6 +155,27 @@ export class MeshV2Stack extends cdk.Stack {
       fieldName: 'joinGroup',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.joinGroup.js'))
+    });
+
+    // Resolvers for Phase 2-2: High-Frequency Mutations
+
+    // Mutation: reportDataByNode (DynamoDB integration)
+    dynamoDbDataSource.createResolver('ReportDataByNodeResolver', {
+      typeName: 'Mutation',
+      fieldName: 'reportDataByNode',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.reportDataByNode.js'))
+    });
+
+    // None Data Source for event pass-through
+    const noneDataSource = this.api.addNoneDataSource('NoneDataSource');
+
+    // Mutation: fireEventByNode (None DataSource for pass-through)
+    noneDataSource.createResolver('FireEventByNodeResolver', {
+      typeName: 'Mutation',
+      fieldName: 'fireEventByNode',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
     });
 
     // Output API endpoint

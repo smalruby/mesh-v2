@@ -49,7 +49,25 @@ end
 # テスト用グループ作成ヘルパー
 def create_test_group(name, host_id, domain)
   query = File.read(File.join(__dir__, 'fixtures/mutations/create_group.graphql'))
-  execute_graphql(query, { name: name, hostId: host_id, domain: domain })
+  response = execute_graphql(query, { name: name, hostId: host_id, domain: domain })
+  response['data']['createGroup']
+end
+
+# テスト用ノード参加ヘルパー
+def join_test_node(group_id, domain, node_id)
+  query = File.read(File.join(__dir__, 'fixtures/mutations/join_group.graphql'))
+  response = execute_graphql(query, { groupId: group_id, domain: domain, nodeId: node_id })
+
+  # エラーチェック
+  if response['errors']
+    raise "GraphQL Error in joinGroup: #{response['errors'].inspect}"
+  end
+
+  if response['data'].nil?
+    raise "No data in response: #{response.inspect}"
+  end
+
+  response['data']['joinGroup']
 end
 
 # カスタムマッチャー: ISO8601形式の日時文字列か確認

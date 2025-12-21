@@ -12,7 +12,7 @@ export function request(ctx) {
     transactItems: [
       // 1. グループ内のノード情報を追加
       {
-        table: 'MeshV2Table',
+        table: ctx.env.TABLE_NAME,
         operation: 'PutItem',
         key: util.dynamodb.toMapValues({
           pk: `DOMAIN#${domain}`,
@@ -29,7 +29,7 @@ export function request(ctx) {
       },
       // 2. ノードの所属情報を作成（逆引き用）
       {
-        table: 'MeshV2Table',
+        table: ctx.env.TABLE_NAME,
         operation: 'PutItem',
         key: util.dynamodb.toMapValues({
           pk: `NODE#${nodeId}`,
