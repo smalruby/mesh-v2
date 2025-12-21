@@ -1,4 +1,5 @@
 require_relative '../use_cases/create_group'
+require_relative '../use_cases/leave_group'
 require_relative '../repositories/dynamodb_repository'
 require 'aws-sdk-dynamodb'
 require 'json'
@@ -13,18 +14,13 @@ def lambda_handler(event:, context:)
   case field_name
   when 'createGroup'
     handle_create_group(arguments)
+  when 'leaveGroup'
+    handle_leave_group(arguments)
   else
-    {
-      statusCode: 400,
-      body: JSON.generate({ error: "Unknown field: #{field_name}" })
-    }
+    raise "Unknown field: #{field_name}"
   end
-rescue StandardError => e
-  # エラーハンドリング
-  {
-    statusCode: 500,
-    body: JSON.generate({ error: e.message, backtrace: e.backtrace })
-  }
+  # Note: AppSyncはLambdaから発生した例外を自動的にGraphQLエラーに変換する
+  # rescue句は不要（エラーはそのまま伝播させる）
 end
 
 def handle_create_group(arguments)
@@ -52,5 +48,34 @@ def format_group_response(group)
     name: group.name,
     hostId: group.host_id,
     createdAt: group.created_at
+  }
+end
+
+def handle_leave_group(arguments)
+  # DynamoDBクライアントとリポジトリの初期化
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV['AWS_REGION'] || 'ap-northeast-1')
+  repository = DynamoDBRepository.new(dynamodb)
+
+  # ユースケースの実行
+  use_case = LeaveGroupUseCase.new(repository)
+  node = use_case.execute(
+    group_id: arguments['groupId'],
+    domain: arguments['domain'],
+    node_id: arguments['nodeId']
+  )
+
+  # ホスト退出の場合はnilが返される
+  return nil if node.nil?
+
+  # AppSync形式にフォーマット
+  format_node_response(node)
+end
+
+def format_node_response(node)
+  {
+    id: node.id,
+    name: node.name,
+    groupId: node.group_id,
+    domain: node.domain
   }
 end
