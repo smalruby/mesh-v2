@@ -179,11 +179,11 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
     });
 
-    // Resolvers for Phase 2-3: Lambda Function (leaveGroup Logic)
+    // Resolvers for Phase 2-4: dissolveGroup with Lambda
 
-    // Lambda Function for leaveGroup (Ruby 3.2)
-    const leaveGroupLambda = new lambda.Function(this, 'LeaveGroupFunction', {
-      functionName: `MeshV2-LeaveGroup${stageSuffix}`,
+    // Lambda function for dissolveGroup
+    const dissolveGroupLambda = new lambda.Function(this, 'DissolveGroupFunction', {
+      functionName: `MeshV2-DissolveGroup${stageSuffix}`,
       runtime: lambda.Runtime.RUBY_3_2,
       handler: 'handlers/appsync_handler.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
@@ -193,19 +193,19 @@ export class MeshV2Stack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
     });
 
-    // Grant DynamoDB permissions to Lambda
-    this.table.grantReadWriteData(leaveGroupLambda);
+    // Grant Lambda permissions to DynamoDB
+    this.table.grantReadWriteData(dissolveGroupLambda);
 
     // Lambda Data Source
-    const leaveGroupLambdaDataSource = this.api.addLambdaDataSource(
-      'LeaveGroupLambdaDataSource',
-      leaveGroupLambda
+    const dissolveGroupDataSource = this.api.addLambdaDataSource(
+      'DissolveGroupDataSource',
+      dissolveGroupLambda
     );
 
-    // Mutation: leaveGroup (Lambda Resolver)
-    leaveGroupLambdaDataSource.createResolver('LeaveGroupResolver', {
+    // Mutation: dissolveGroup (Lambda resolver)
+    dissolveGroupDataSource.createResolver('DissolveGroupResolver', {
       typeName: 'Mutation',
-      fieldName: 'leaveGroup',
+      fieldName: 'dissolveGroup',
     });
 
     // Output API endpoint

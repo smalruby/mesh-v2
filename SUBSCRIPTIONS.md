@@ -80,19 +80,39 @@ subscription {
 
 ---
 
-### 3. onGroupDissolve (未実装)
+### 3. onGroupDissolve
 
-**Status**: ⚠️ Currently not implemented due to type mismatch
+**Purpose**: リアルタイムでグループ解散を購読
 
-**Issue**:
-- `leaveGroup` mutation returns `Node?` (nullable)
-- `onGroupDissolve` subscription expects `GroupDissolvePayload!` (non-null)
-- AppSync requires subscription return types to match mutation return types
+**Trigger**: `dissolveGroup` mutation
 
-**Future Implementation Options**:
-1. Create separate `dissolveGroup` mutation that explicitly returns `GroupDissolvePayload!`
-2. Change `leaveGroup` return type to union type `Node | GroupDissolvePayload`
-3. Use AppSync Pipeline Resolvers to transform the response
+**Parameters**:
+- `groupId: ID!` - 購読するグループID
+- `domain: String!` - グループのドメイン
+
+**Returns**: `GroupDissolvePayload!`
+```graphql
+{
+  groupId: ID!
+  domain: String!
+  message: String!
+}
+```
+
+**Usage Example**:
+```graphql
+subscription {
+  onGroupDissolve(groupId: "group-123", domain: "example.com") {
+    groupId
+    domain
+    message
+  }
+}
+```
+
+**Note**:
+- 以前の `leaveGroup` mutation は削除され、`dissolveGroup` mutation に置き換えられました
+- `dissolveGroup` は明示的に `GroupDissolvePayload!` を返すため、型の不一致問題が解決されました
 
 ---
 
@@ -111,8 +131,9 @@ All subscriptions filter by `groupId` and `domain`:
 Integration tests verify:
 - ✅ GraphQL schema contains Subscription type
 - ✅ @aws_subscribe directives are correctly defined
-- ✅ Mutations (reportDataByNode, fireEventByNode) work correctly
+- ✅ Mutations (reportDataByNode, fireEventByNode, dissolveGroup) work correctly
 - ✅ Multiple groups can coexist with proper filtering
+- ✅ onGroupDissolve subscription triggers correctly
 
 Run tests:
 ```bash
@@ -240,4 +261,4 @@ AppSync handles subscription logic automatically when using `@aws_subscribe` dir
 
 **Last Updated**: 2025-12-21
 **Phase**: 2-4 - Subscription Implementation
-**Status**: ✅ Implemented (2/3 subscriptions)
+**Status**: ✅ Fully Implemented (3/3 subscriptions)

@@ -111,13 +111,28 @@ RSpec.describe 'Subscriptions API', type: :request do
     end
 
     context 'onGroupDissolve の前提条件' do
-      it 'leaveGroup mutation (ホスト退出) が正常に動作する (Subscription未実装)' do
-        skip 'onGroupDissolve subscription is not implemented due to type mismatch'
+      it 'dissolveGroup mutation が正常に動作する' do
+        # グループ作成
+        group = create_test_group('Dissolve Test Group', host_id, domain)
+        group_id = group['id']
 
-        # Note: onGroupDissolveは型の不一致により現在未実装
-        # leaveGroup returns Node? だが、GraphDissolvePayload!が期待されている
-        # 将来的な実装では、leaveGroupの戻り値型を調整するか、
-        # 別のdissolveGroup mutationを作成する必要がある
+        # グループ解散
+        query = File.read(File.join(__dir__, '../fixtures/mutations/dissolve_group.graphql'))
+        response = execute_graphql(query, {
+          groupId: group_id,
+          domain: domain,
+          hostId: host_id
+        })
+
+        expect(response['errors']).to be_nil
+        expect(response['data']['dissolveGroup']).not_to be_nil
+        expect(response['data']['dissolveGroup']['groupId']).to eq(group_id)
+        expect(response['data']['dissolveGroup']['message']).to include('dissolved')
+
+        # Subscription期待動作:
+        # - onGroupDissolve(groupId: group_id, domain: domain) を購読中のクライアントに
+        # - GroupDissolvePayload が送信される
+        puts "  ✓ dissolveGroup executed - onGroupDissolve should trigger"
       end
     end
 

@@ -88,11 +88,11 @@ type Mutation {
     nodeId: ID!
   ): Node!
 
-  leaveGroup(
+  dissolveGroup(
     groupId: ID!
     domain: String!
-    nodeId: ID!
-  ): Node
+    hostId: ID!
+  ): GroupDissolvePayload!
 
   # データ通信
   reportDataByNode(
@@ -125,12 +125,9 @@ type Subscription {
     @aws_subscribe(mutations: ["fireEventByNode"])
 
   # グループ解散通知を購読
-  # Note: onGroupDissolveは型の不一致により現在未実装
-  # leaveGroup returns Node? だが、GroupDissolvePayload!が期待されている
-  # 将来的な実装では、leaveGroupの戻り値型を調整するか、
-  # 別のdissolveGroup mutationを作成する必要がある
-  # onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload!
-  #   @aws_subscribe(mutations: ["leaveGroup"])
+  # dissolveGroup mutation がトリガー
+  onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload!
+    @aws_subscribe(mutations: ["dissolveGroup"])
 }
 
 schema {

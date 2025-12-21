@@ -36,6 +36,57 @@ class DynamoDBRepository
     nil
   end
 
+  # グループIDとドメインでグループを検索
+  def find_group(group_id, domain)
+    return nil unless @dynamodb
+
+    result = @dynamodb.get_item(
+      table_name: @table_name,
+      key: {
+        'pk' => "DOMAIN##{domain}",
+        'sk' => "GROUP##{group_id}#METADATA"
+      }
+    )
+
+    return nil unless result.item
+
+    item_to_group(result.item)
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    nil
+  end
+
+  # グループを解散（全アイテムを削除）
+  def dissolve_group(group_id, domain)
+    return false unless @dynamodb
+
+    # グループに関連する全アイテムを取得
+    result = @dynamodb.query(
+      table_name: @table_name,
+      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      expression_attribute_values: {
+        ':pk' => "DOMAIN##{domain}",
+        ':sk_prefix' => "GROUP##{group_id}#"
+      }
+    )
+
+    # 全アイテムを削除
+    result.items.each do |item|
+      @dynamodb.delete_item(
+        table_name: @table_name,
+        key: {
+          'pk' => item['pk'],
+          'sk' => item['sk']
+        }
+      )
+    end
+
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
   # グループを保存
   def save_group(group)
     return false unless @dynamodb

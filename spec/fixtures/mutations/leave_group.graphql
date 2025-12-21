@@ -1,8 +1,0 @@
-mutation LeaveGroup($groupId: ID!, $domain: String!, $nodeId: ID!) {
-  leaveGroup(groupId: $groupId, domain: $domain, nodeId: $nodeId) {
-    id
-    name
-    groupId
-    domain
-  }
-}

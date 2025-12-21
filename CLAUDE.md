@@ -430,6 +430,41 @@ end
 
 **Testing**: Integration tests with real AppSync events
 
+**IMPORTANT - Error Handling**:
+- **DO NOT** use `rescue` to catch exceptions in the Lambda handler
+- Let exceptions propagate to AppSync naturally
+- AppSync will automatically convert Ruby exceptions to GraphQL errors
+- If you catch exceptions and return a hash with `statusCode`/`body`, AppSync will try to parse it as a valid response and fail with type mismatch errors
+
+**Example (CORRECT)**:
+```ruby
+def lambda_handler(event:, context:)
+  field_name = event['info']['fieldName']
+  arguments = event['arguments']
+
+  case field_name
+  when 'dissolveGroup'
+    handle_dissolve_group(arguments)  # May raise StandardError
+  else
+    raise StandardError, "Unknown field: #{field_name}"
+  end
+  # No rescue block - let errors propagate to AppSync
+end
+```
+
+**Example (INCORRECT)**:
+```ruby
+def lambda_handler(event:, context:)
+  # ... code ...
+rescue StandardError => e
+  # This will cause AppSync type mismatch errors!
+  {
+    statusCode: 500,
+    body: JSON.generate({ error: e.message })
+  }
+end
+```
+
 ### Benefits of Hexagonal Architecture
 
 1. **Testability**: Pure business logic without infrastructure dependencies
