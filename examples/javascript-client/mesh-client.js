@@ -144,6 +144,80 @@ class MeshClient {
   }
 
   /**
+   * Get a specific group by groupId and domain
+   */
+  async getGroup(groupId, domain) {
+    const query = `
+      query GetGroup($groupId: ID!, $domain: String!) {
+        getGroup(groupId: $groupId, domain: $domain) {
+          id
+          domain
+          fullId
+          name
+          hostId
+          createdAt
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      groupId,
+      domain: domain || this.domain
+    });
+
+    return data.getGroup;
+  }
+
+  /**
+   * Get node status by nodeId
+   */
+  async getNodeStatus(nodeId) {
+    const query = `
+      query GetNodeStatus($nodeId: ID!) {
+        getNodeStatus(nodeId: $nodeId) {
+          nodeId
+          groupId
+          domain
+          data {
+            key
+            value
+          }
+          timestamp
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      nodeId
+    });
+
+    return data.getNodeStatus;
+  }
+
+  /**
+   * List all nodes in a group
+   */
+  async listNodesInGroup(groupId, domain) {
+    const query = `
+      query ListNodesInGroup($groupId: ID!, $domain: String!) {
+        listNodesInGroup(groupId: $groupId, domain: $domain) {
+          id
+          name
+          groupId
+          domain
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      groupId,
+      domain: domain || this.domain
+    });
+
+    return data.listNodesInGroup;
+  }
+
+  /**
    * Join a group
    */
   async joinGroup(groupId, nodeId, domain) {
