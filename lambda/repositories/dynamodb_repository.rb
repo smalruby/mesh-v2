@@ -1,11 +1,11 @@
-require_relative '../domain/group'
+require_relative "../domain/group"
 
 # DynamoDB Repository
 # データアクセス層 - DynamoDBとの通信を担当
 class DynamoDBRepository
   def initialize(dynamodb_client = nil, table_name = nil)
     @dynamodb = dynamodb_client
-    @table_name = table_name || ENV['DYNAMODB_TABLE_NAME'] || 'MeshV2Table-stg'
+    @table_name = table_name || ENV["DYNAMODB_TABLE_NAME"] || "MeshV2Table-stg"
   end
 
   # hostId + domain でグループを検索
@@ -17,16 +17,16 @@ class DynamoDBRepository
     # FilterExpression: hostId = :hostId
     result = @dynamodb.query(
       table_name: @table_name,
-      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      key_condition_expression: "pk = :pk AND begins_with(sk, :sk_prefix)",
       expression_attribute_values: {
-        ':pk' => "DOMAIN##{domain}",
-        ':sk_prefix' => 'GROUP#',
-        ':hostId' => host_id
+        ":pk" => "DOMAIN##{domain}",
+        ":sk_prefix" => "GROUP#",
+        ":hostId" => host_id
       },
-      filter_expression: 'hostId = :hostId'
+      filter_expression: "hostId = :hostId"
     )
 
-    items = result.items.select { |item| item['sk'].end_with?('#METADATA') }
+    items = result.items.select { |item| item["sk"].end_with?("#METADATA") }
     return nil if items.empty?
 
     item_to_group(items.first)
@@ -34,57 +34,6 @@ class DynamoDBRepository
     # エラーハンドリング（ログ出力など）
     puts "DynamoDB Error: #{e.message}"
     nil
-  end
-
-  # グループIDとドメインでグループを検索
-  def find_group(group_id, domain)
-    return nil unless @dynamodb
-
-    result = @dynamodb.get_item(
-      table_name: @table_name,
-      key: {
-        'pk' => "DOMAIN##{domain}",
-        'sk' => "GROUP##{group_id}#METADATA"
-      }
-    )
-
-    return nil unless result.item
-
-    item_to_group(result.item)
-  rescue Aws::DynamoDB::Errors::ServiceError => e
-    puts "DynamoDB Error: #{e.message}"
-    nil
-  end
-
-  # グループを解散（全アイテムを削除）
-  def dissolve_group(group_id, domain)
-    return false unless @dynamodb
-
-    # グループに関連する全アイテムを取得
-    result = @dynamodb.query(
-      table_name: @table_name,
-      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
-      expression_attribute_values: {
-        ':pk' => "DOMAIN##{domain}",
-        ':sk_prefix' => "GROUP##{group_id}#"
-      }
-    )
-
-    # 全アイテムを削除
-    result.items.each do |item|
-      @dynamodb.delete_item(
-        table_name: @table_name,
-        key: {
-          'pk' => item['pk'],
-          'sk' => item['sk']
-        }
-      )
-    end
-
-    true
-  rescue Aws::DynamoDB::Errors::ServiceError => e
-    puts "DynamoDB Error: #{e.message}"
-    false
   end
 
   # グループを保存
@@ -95,16 +44,16 @@ class DynamoDBRepository
     @dynamodb.put_item(
       table_name: @table_name,
       item: {
-        'pk' => "DOMAIN##{group.domain}",
-        'sk' => "GROUP##{group.id}#METADATA",
-        'id' => group.id,
-        'domain' => group.domain,
-        'fullId' => group.full_id,
-        'name' => group.name,
-        'hostId' => group.host_id,
-        'createdAt' => group.created_at,
-        'gsi_pk' => "GROUP##{group.id}",
-        'gsi_sk' => "DOMAIN##{group.domain}"
+        "pk" => "DOMAIN##{group.domain}",
+        "sk" => "GROUP##{group.id}#METADATA",
+        "id" => group.id,
+        "domain" => group.domain,
+        "fullId" => group.full_id,
+        "name" => group.name,
+        "hostId" => group.host_id,
+        "createdAt" => group.created_at,
+        "gsi_pk" => "GROUP##{group.id}",
+        "gsi_sk" => "DOMAIN##{group.domain}"
       }
     )
     true
@@ -120,8 +69,8 @@ class DynamoDBRepository
     result = @dynamodb.get_item(
       table_name: @table_name,
       key: {
-        'pk' => "DOMAIN##{domain}",
-        'sk' => "GROUP##{group_id}#METADATA"
+        "pk" => "DOMAIN##{domain}",
+        "sk" => "GROUP##{group_id}#METADATA"
       }
     )
 
@@ -140,10 +89,10 @@ class DynamoDBRepository
     # 1. グループ内の全アイテムを取得
     result = @dynamodb.query(
       table_name: @table_name,
-      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      key_condition_expression: "pk = :pk AND begins_with(sk, :sk_prefix)",
       expression_attribute_values: {
-        ':pk' => "DOMAIN##{domain}",
-        ':sk_prefix' => "GROUP##{group_id}"
+        ":pk" => "DOMAIN##{domain}",
+        ":sk_prefix" => "GROUP##{group_id}"
       }
     )
 
@@ -152,21 +101,21 @@ class DynamoDBRepository
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
-          'pk' => item['pk'],
-          'sk' => item['sk']
+          "pk" => item["pk"],
+          "sk" => item["sk"]
         }
       )
     end
 
     # 3. 各ノードの所属情報も削除
-    node_items = result.items.select { |item| item['sk'].include?('#NODE#') }
+    node_items = result.items.select { |item| item["sk"].include?("#NODE#") }
     node_items.each do |item|
-      node_id = item['nodeId']
+      node_id = item["nodeId"]
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
-          'pk' => "NODE##{node_id}",
-          'sk' => 'METADATA'
+          "pk" => "NODE##{node_id}",
+          "sk" => "METADATA"
         }
       )
     end
@@ -189,8 +138,8 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              'pk' => "DOMAIN##{domain}",
-              'sk' => "GROUP##{group_id}#NODE##{node_id}"
+              "pk" => "DOMAIN##{domain}",
+              "sk" => "GROUP##{group_id}#NODE##{node_id}"
             }
           }
         },
@@ -199,8 +148,8 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              'pk' => "NODE##{node_id}",
-              'sk' => 'METADATA'
+              "pk" => "NODE##{node_id}",
+              "sk" => "METADATA"
             }
           }
         }
@@ -217,11 +166,11 @@ class DynamoDBRepository
 
   def item_to_group(item)
     Group.new(
-      id: item['id'],
-      name: item['name'],
-      host_id: item['hostId'],
-      domain: item['domain'],
-      created_at: item['createdAt']
+      id: item["id"],
+      name: item["name"],
+      host_id: item["hostId"],
+      domain: item["domain"],
+      created_at: item["createdAt"]
     )
   end
 end

@@ -21,11 +21,11 @@ class Group
   private
 
   def validate!
-    raise ArgumentError, 'id is required' if @id.nil? || @id.to_s.empty?
-    raise ArgumentError, 'name is required' if @name.nil? || @name.empty?
-    raise ArgumentError, 'host_id is required' if @host_id.nil? || @host_id.to_s.empty?
-    raise ArgumentError, 'domain is required' if @domain.nil? || @domain.empty?
-    raise ArgumentError, 'domain must be 256 characters or less' if @domain.length > 256
-    raise ArgumentError, 'created_at is required' if @created_at.nil? || @created_at.empty?
+    raise ArgumentError, "id is required" if @id.nil? || @id.to_s.empty?
+    raise ArgumentError, "name is required" if @name.nil? || @name.empty?
+    raise ArgumentError, "host_id is required" if @host_id.nil? || @host_id.to_s.empty?
+    raise ArgumentError, "domain is required" if @domain.nil? || @domain.empty?
+    raise ArgumentError, "domain must be 256 characters or less" if @domain.length > 256
+    raise ArgumentError, "created_at is required" if @created_at.nil? || @created_at.empty?
   end
 end

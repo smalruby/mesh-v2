@@ -1,6 +1,6 @@
-require_relative '../domain/group'
-require 'securerandom'
-require 'time'
+require_relative "../domain/group"
+require "securerandom"
+require "time"
 
 # CreateGroup Use Case
 # ビジネスロジック - グループ作成の処理フローを管理
