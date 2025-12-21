@@ -452,13 +452,8 @@ async function handleSendEvent() {
 
     console.log('Event sent:', result);
 
-    // Add to local history
-    addEventToHistory({
-      eventName,
-      payload: eventPayload,
-      firedByNodeId: state.currentNodeId,
-      firedAt: new Date().toISOString()
-    });
+    // Add to local history (using API result)
+    addEventToHistory(result);
 
     showSuccess('eventSuccess', 'Event sent successfully');
 
@@ -501,10 +496,10 @@ function displayEventHistory() {
 
   eventHistory.innerHTML = state.eventHistory.map(event => `
     <div class="event-item">
-      <div class="event-name">${event.eventName}</div>
+      <div class="event-name">${event.name}</div>
       <div>From: ${event.firedByNodeId}</div>
       ${event.payload ? `<div>Payload: ${event.payload}</div>` : ''}
-      <div class="event-time">${new Date(event.firedAt).toLocaleTimeString()}</div>
+      <div class="event-time">${new Date(event.timestamp).toLocaleTimeString()}</div>
     </div>
   `).join('');
 }

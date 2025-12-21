@@ -173,11 +173,12 @@ class MeshClient {
     const query = `
       mutation FireEventByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $eventName: String!, $payload: String) {
         fireEventByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, eventName: $eventName, payload: $payload) {
-          eventName
+          name
           firedByNodeId
           groupId
+          domain
           payload
-          firedAt
+          timestamp
         }
       }
     `;
