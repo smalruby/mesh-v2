@@ -19,18 +19,23 @@ const state = {
   eventHistory: []
 };
 
-// Rate limiters
-const sensorRateLimiter = new RateLimiter(4, 1000); // 4 calls per second
-const eventRateLimiter = new RateLimiter(2, 1000); // 2 calls per second
+// Rate limiters (initialized after DOM loads)
+let sensorRateLimiter;
+let eventRateLimiter;
 
-// Change detector for sensors
-const sensorChangeDetector = new ChangeDetector();
+// Change detector for sensors (initialized after DOM loads)
+let sensorChangeDetector;
 
 /**
  * Initialize application on page load
  */
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Mesh v2 Client initializing...');
+
+  // Initialize rate limiters and change detector
+  sensorRateLimiter = new RateLimiter(4, 1000); // 4 calls per second
+  eventRateLimiter = new RateLimiter(2, 1000); // 2 calls per second
+  sensorChangeDetector = new ChangeDetector();
 
   // Load saved configuration from localStorage
   loadConfiguration();

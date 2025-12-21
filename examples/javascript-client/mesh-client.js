@@ -210,7 +210,7 @@ class MeshClient {
    * Note: WebSocket subscriptions require additional setup
    * For prototype, we'll use polling as a fallback
    */
-  subscribeTo DataUpdates(groupId, domain, callback) {
+  subscribeToDataUpdates(groupId, domain, callback) {
     console.log('Subscription: onDataUpdateInGroup', { groupId, domain });
 
     // Store callback for later use
