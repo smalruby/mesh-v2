@@ -88,27 +88,30 @@ type Mutation {
     nodeId: ID!
   ): Node!
 
+  # Note: nullableにすることでSubscription型と一致させる
   dissolveGroup(
     groupId: ID!
     domain: String!
     hostId: ID!
-  ): GroupDissolvePayload!
+  ): GroupDissolvePayload
 
   # データ通信
+  # Note: nullableにすることでSubscription型と一致させる
   reportDataByNode(
     groupId: ID!
     domain: String!
     nodeId: ID!
     data: [SensorDataInput!]!
-  ): NodeStatus!
+  ): NodeStatus
 
+  # Note: nullableにすることでSubscription型と一致させる
   fireEventByNode(
     groupId: ID!
     domain: String!
     nodeId: ID!
     eventName: String!
     payload: String
-  ): Event!
+  ): Event
 }
 
 # --- サブスクリプション (Subscriptions) ---

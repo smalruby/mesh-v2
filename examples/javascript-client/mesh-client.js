@@ -273,6 +273,7 @@ class MeshClient {
         reportDataByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, data: $data) {
           nodeId
           groupId
+          domain
           data {
             key
             value
