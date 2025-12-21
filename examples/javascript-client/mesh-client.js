@@ -92,6 +92,33 @@ class MeshClient {
   }
 
   /**
+   * List all node statuses in a group
+   */
+  async listGroupStatuses(groupId, domain) {
+    const query = `
+      query ListGroupStatuses($groupId: ID!, $domain: String!) {
+        listGroupStatuses(groupId: $groupId, domain: $domain) {
+          nodeId
+          groupId
+          domain
+          data {
+            key
+            value
+          }
+          timestamp
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      groupId,
+      domain: domain || this.domain
+    });
+
+    return data.listGroupStatuses;
+  }
+
+  /**
    * Join a group
    */
   async joinGroup(groupId, nodeId, domain) {
@@ -196,8 +223,8 @@ class MeshClient {
 
   /**
    * Subscribe to sensor data updates
-   * Note: WebSocket subscriptions require additional setup
-   * For prototype, we'll use polling as a fallback
+   * Note: Real implementation should use WebSocket subscriptions
+   * For prototype, we use polling with listGroupStatuses query
    */
   subscribeToDataUpdates(groupId, domain, callback) {
     console.log('Subscription: onDataUpdateInGroup', { groupId, domain });
@@ -206,11 +233,16 @@ class MeshClient {
     const subscriptionId = `data-${groupId}`;
     this.eventHandlers.set(subscriptionId, callback);
 
-    // For prototype: poll for updates every 2 seconds
+    // Poll for updates every 2 seconds
     const pollInterval = setInterval(async () => {
-      // In a real implementation, this would use WebSocket subscriptions
-      // For now, we'll just log that we're subscribed
-      console.log('Polling for data updates...');
+      try {
+        const statuses = await this.listGroupStatuses(groupId, domain);
+        if (callback && statuses) {
+          callback(statuses);
+        }
+      } catch (error) {
+        console.error('Error polling group statuses:', error);
+      }
     }, 2000);
 
     this.subscriptions.set(subscriptionId, pollInterval);

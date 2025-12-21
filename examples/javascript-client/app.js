@@ -11,6 +11,7 @@ const state = {
   currentNodeId: null,
   selectedGroupId: null,
   sessionStartTime: null,
+  dataSubscriptionId: null,
   sensorData: {
     temperature: 20,
     brightness: 50,
@@ -214,6 +215,13 @@ async function handleCreateGroup() {
     // Join the created group automatically
     state.currentGroup = group;
 
+    // Subscribe to data updates from other nodes
+    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      displayOtherNodesData
+    );
+
     showSuccess('groupSuccess', `Group created: ${group.fullId}`);
     updateCurrentGroupUI();
 
@@ -302,6 +310,13 @@ async function handleJoinGroup() {
 
     state.currentGroup = state.selectedGroup;
 
+    // Subscribe to data updates from other nodes
+    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      displayOtherNodesData
+    );
+
     showSuccess('groupSuccess', `Joined group: ${state.selectedGroup.name}`);
     updateCurrentGroupUI();
   } catch (error) {
@@ -339,8 +354,17 @@ async function handleDissolveGroup() {
 
     console.log('Group dissolved');
 
+    // Unsubscribe from data updates
+    if (state.dataSubscriptionId) {
+      state.client.unsubscribe(state.dataSubscriptionId);
+      state.dataSubscriptionId = null;
+    }
+
     state.currentGroup = null;
     state.selectedGroupId = null;
+
+    // Clear other nodes display
+    displayOtherNodesData(null);
 
     showSuccess('groupSuccess', 'Group dissolved successfully');
     updateCurrentGroupUI();
@@ -510,6 +534,38 @@ function displayEventHistory() {
 function handleClearEvents() {
   state.eventHistory = [];
   displayEventHistory();
+}
+
+/**
+ * Display other nodes' sensor data
+ */
+function displayOtherNodesData(statuses) {
+  const otherNodesData = document.getElementById('otherNodesData');
+
+  if (!statuses || statuses.length === 0) {
+    otherNodesData.innerHTML = '<p style="color: #999; text-align: center;">No other nodes in group</p>';
+    return;
+  }
+
+  // Filter out current node
+  const otherNodes = statuses.filter(status => status.nodeId !== state.currentNodeId);
+
+  if (otherNodes.length === 0) {
+    otherNodesData.innerHTML = '<p style="color: #999; text-align: center;">No other nodes in group</p>';
+    return;
+  }
+
+  otherNodesData.innerHTML = otherNodes.map(status => `
+    <div class="node-data">
+      <h4>Node: ${status.nodeId}</h4>
+      ${status.data && status.data.length > 0 ? status.data.map(item => `
+        <div><strong>${item.key}:</strong> ${item.value}</div>
+      `).join('') : '<div>No data</div>'}
+      <div style="color: #999; font-size: 11px; margin-top: 5px;">
+        Updated: ${new Date(status.timestamp).toLocaleTimeString()}
+      </div>
+    </div>
+  `).join('');
 }
 
 /**
