@@ -220,7 +220,8 @@ async function handleCreateGroup() {
     // Join the created group automatically
     state.currentGroup = group;
 
-    // Send initial sensor data to create NodeStatus entry
+    // Initialize sensor data for this node
+    // This immediately shares current sensor state with other group members
     const initialData = [
       { key: 'temperature', value: state.sensorData.temperature.toString() },
       { key: 'brightness', value: state.sensorData.brightness.toString() },
@@ -346,7 +347,8 @@ async function handleJoinGroup() {
 
     state.currentGroup = state.selectedGroup;
 
-    // Send initial sensor data to create NodeStatus entry
+    // Initialize sensor data for this node
+    // This immediately shares current sensor state with other group members
     const initialData = [
       { key: 'temperature', value: state.sensorData.temperature.toString() },
       { key: 'brightness', value: state.sensorData.brightness.toString() },
