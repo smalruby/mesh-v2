@@ -266,11 +266,25 @@ function displayGroupList(groups) {
 
   groupList.innerHTML = groups.map(group => `
     <div class="group-item ${state.selectedGroupId === group.id ? 'selected' : ''}"
-         onclick="selectGroup('${group.id}', '${group.name}', '${group.domain}', '${group.hostId}')">
+         data-group-id="${group.id}"
+         data-group-name="${group.name}"
+         data-group-domain="${group.domain}"
+         data-host-id="${group.hostId}">
       <strong>${group.name}</strong><br>
       <small>ID: ${group.id} | Host: ${group.hostId}</small>
     </div>
   `).join('');
+
+  // Add click listeners to all group items
+  groupList.querySelectorAll('.group-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const groupId = item.dataset.groupId;
+      const groupName = item.dataset.groupName;
+      const domain = item.dataset.groupDomain;
+      const hostId = item.dataset.hostId;
+      selectGroup(groupId, groupName, domain, hostId);
+    });
+  });
 }
 
 /**
@@ -280,11 +294,14 @@ function selectGroup(groupId, groupName, domain, hostId) {
   state.selectedGroupId = groupId;
   state.selectedGroup = { id: groupId, name: groupName, domain, hostId };
 
-  // Update UI
+  // Update UI - remove selected from all, add to clicked item
   document.querySelectorAll('.group-item').forEach(item => {
-    item.classList.remove('selected');
+    if (item.dataset.groupId === groupId) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
   });
-  event.target.closest('.group-item').classList.add('selected');
 
   console.log('Selected group:', state.selectedGroup);
 
