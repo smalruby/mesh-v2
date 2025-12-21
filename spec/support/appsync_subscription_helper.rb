@@ -1,8 +1,8 @@
-require 'faye/websocket'
-require 'eventmachine'
-require 'json'
-require 'base64'
-require 'uri'
+require "faye/websocket"
+require "eventmachine"
+require "json"
+require "base64"
+require "uri"
 
 # AppSync Subscription Helper
 # AWS AppSyncのWebSocket Subscriptionをテストするためのヘルパー
@@ -21,25 +21,25 @@ class AppSyncSubscriptionHelper
   # WebSocket接続を確立
   def connect
     # AppSync WebSocket URL (HTTP → WSS)
-    ws_url = @api_url.gsub('https://', 'wss://').gsub('/graphql', '/graphql/connect')
+    ws_url = @api_url.gsub("https://", "wss://").gsub("/graphql", "/graphql/connect")
 
     # AppSync接続用のヘッダー
     headers = {
-      'host' => URI.parse(@api_url).host
+      "host" => URI.parse(@api_url).host
     }
 
     # WebSocket接続用のURLにAPI Keyを含める
     connection_params = {
-      'header' => Base64.strict_encode64(JSON.generate({
-        'x-api-key' => @api_key,
-        'host' => URI.parse(@api_url).host
+      "header" => Base64.strict_encode64(JSON.generate({
+        "x-api-key" => @api_key,
+        "host" => URI.parse(@api_url).host
       })),
-      'payload' => Base64.strict_encode64('{}')
+      "payload" => Base64.strict_encode64("{}")
     }
 
     full_url = "#{ws_url}?#{URI.encode_www_form(connection_params)}"
 
-    @ws = Faye::WebSocket::Client.new(full_url, nil, { headers: headers })
+    @ws = Faye::WebSocket::Client.new(full_url, nil, {headers: headers})
 
     @ws.on :open do |event|
       puts "[WebSocket] Connected to AppSync"
@@ -67,32 +67,32 @@ class AppSyncSubscriptionHelper
     subscription_id ||= SecureRandom.uuid
 
     message = {
-      'id' => subscription_id,
-      'type' => 'start',
-      'payload' => {
-        'data' => JSON.generate({
-          'query' => subscription_query,
-          'variables' => variables
+      "id" => subscription_id,
+      "type" => "start",
+      "payload" => {
+        "data" => JSON.generate({
+          "query" => subscription_query,
+          "variables" => variables
         }),
-        'extensions' => {
-          'authorization' => {
-            'x-api-key' => @api_key,
-            'host' => URI.parse(@api_url).host
+        "extensions" => {
+          "authorization" => {
+            "x-api-key" => @api_key,
+            "host" => URI.parse(@api_url).host
           }
         }
       }
     }
 
     send_message(message)
-    @registered_subscriptions[subscription_id] = { query: subscription_query, variables: variables }
+    @registered_subscriptions[subscription_id] = {query: subscription_query, variables: variables}
     subscription_id
   end
 
   # Subscription登録解除
   def unsubscribe(subscription_id)
     message = {
-      'id' => subscription_id,
-      'type' => 'stop'
+      "id" => subscription_id,
+      "type" => "stop"
     }
     send_message(message)
     @registered_subscriptions.delete(subscription_id)
@@ -129,14 +129,18 @@ class AppSyncSubscriptionHelper
       return @messages.last(count) if @messages.length >= initial_count + count
     end
 
-    @messages.last(count) rescue []
+    begin
+      @messages.last(count)
+    rescue
+      []
+    end
   end
 
   private
 
   def send_connection_init
     message = {
-      'type' => 'connection_init'
+      "type" => "connection_init"
     }
     send_message(message)
   end
@@ -144,7 +148,7 @@ class AppSyncSubscriptionHelper
   def send_message(message)
     if @ws
       @ws.send(JSON.generate(message))
-      puts "[WebSocket] Sent: #{message['type']} (id: #{message['id']})"
+      puts "[WebSocket] Sent: #{message["type"]} (id: #{message["id"]})"
     else
       puts "[WebSocket] Error: Not connected"
     end
@@ -152,26 +156,26 @@ class AppSyncSubscriptionHelper
 
   def handle_message(data)
     message = JSON.parse(data)
-    puts "[WebSocket] Received: #{message['type']} (id: #{message['id']})"
+    puts "[WebSocket] Received: #{message["type"]} (id: #{message["id"]})"
 
-    case message['type']
-    when 'connection_ack'
+    case message["type"]
+    when "connection_ack"
       puts "[WebSocket] Connection acknowledged"
-    when 'start_ack'
-      puts "[WebSocket] Subscription started: #{message['id']}"
-    when 'data'
-      puts "[WebSocket] Data received: #{message['payload']}"
+    when "start_ack"
+      puts "[WebSocket] Subscription started: #{message["id"]}"
+    when "data"
+      puts "[WebSocket] Data received: #{message["payload"]}"
       @messages << message
-    when 'error'
-      error_msg = "Subscription error: #{message['payload']}"
+    when "error"
+      error_msg = "Subscription error: #{message["payload"]}"
       puts "[WebSocket] #{error_msg}"
       @errors << error_msg
-    when 'complete'
-      puts "[WebSocket] Subscription completed: #{message['id']}"
-    when 'ka'
+    when "complete"
+      puts "[WebSocket] Subscription completed: #{message["id"]}"
+    when "ka"
       # Keep-alive message
     else
-      puts "[WebSocket] Unknown message type: #{message['type']}"
+      puts "[WebSocket] Unknown message type: #{message["type"]}"
     end
   rescue JSON::ParserError => e
     puts "[WebSocket] Failed to parse message: #{e.message}"

@@ -1,18 +1,18 @@
-require 'json'
-require 'net/http'
-require 'uri'
-require 'date'
-require 'securerandom'
+require "json"
+require "net/http"
+require "uri"
+require "date"
+require "securerandom"
 
 # Load support files
-Dir[File.join(__dir__, 'support', '**', '*.rb')].each { |f| require f }
+Dir[File.join(__dir__, "support", "**", "*.rb")].each { |f| require f }
 
 RSpec.configure do |config|
   config.before(:suite) do
     # 環境変数チェック（結合テストのみ）
-    if RSpec.configuration.files_to_run.any? { |f| f.include?('spec/requests/') }
-      raise 'APPSYNC_ENDPOINT is not set' unless ENV['APPSYNC_ENDPOINT']
-      raise 'APPSYNC_API_KEY is not set' unless ENV['APPSYNC_API_KEY']
+    if RSpec.configuration.files_to_run.any? { |f| f.include?("spec/requests/") }
+      raise "APPSYNC_ENDPOINT is not set" unless ENV["APPSYNC_ENDPOINT"]
+      raise "APPSYNC_API_KEY is not set" unless ENV["APPSYNC_API_KEY"]
     end
   end
 
@@ -30,15 +30,15 @@ end
 
 # GraphQL APIを実行するヘルパーメソッド
 def execute_graphql(query, variables = {})
-  uri = URI(ENV['APPSYNC_ENDPOINT'])
+  uri = URI(ENV["APPSYNC_ENDPOINT"])
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
   # テスト環境では証明書検証を無効化（AppSyncは信頼できるAWSサービス）
   http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
   request = Net::HTTP::Post.new(uri.path, {
-    'Content-Type' => 'application/json',
-    'x-api-key' => ENV['APPSYNC_API_KEY']
+    "Content-Type" => "application/json",
+    "x-api-key" => ENV["APPSYNC_API_KEY"]
   })
 
   request.body = JSON.generate({
@@ -52,26 +52,26 @@ end
 
 # テスト用グループ作成ヘルパー
 def create_test_group(name, host_id, domain)
-  query = File.read(File.join(__dir__, 'fixtures/mutations/create_group.graphql'))
-  response = execute_graphql(query, { name: name, hostId: host_id, domain: domain })
-  response['data']['createGroup']
+  query = File.read(File.join(__dir__, "fixtures/mutations/create_group.graphql"))
+  response = execute_graphql(query, {name: name, hostId: host_id, domain: domain})
+  response["data"]["createGroup"]
 end
 
 # テスト用ノード参加ヘルパー
 def join_test_node(group_id, domain, node_id)
-  query = File.read(File.join(__dir__, 'fixtures/mutations/join_group.graphql'))
-  response = execute_graphql(query, { groupId: group_id, domain: domain, nodeId: node_id })
+  query = File.read(File.join(__dir__, "fixtures/mutations/join_group.graphql"))
+  response = execute_graphql(query, {groupId: group_id, domain: domain, nodeId: node_id})
 
   # エラーチェック
-  if response['errors']
-    raise "GraphQL Error in joinGroup: #{response['errors'].inspect}"
+  if response["errors"]
+    raise "GraphQL Error in joinGroup: #{response["errors"].inspect}"
   end
 
-  if response['data'].nil?
+  if response["data"].nil?
     raise "No data in response: #{response.inspect}"
   end
 
-  response['data']['joinGroup']
+  response["data"]["joinGroup"]
 end
 
 # カスタムマッチャー: ISO8601形式の日時文字列か確認
