@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -176,6 +177,35 @@ export class MeshV2Stack extends cdk.Stack {
       fieldName: 'fireEventByNode',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
+    });
+
+    // Resolvers for Phase 2-3: Lambda Function (leaveGroup Logic)
+
+    // Lambda Function for leaveGroup (Ruby 3.2)
+    const leaveGroupLambda = new lambda.Function(this, 'LeaveGroupFunction', {
+      functionName: `MeshV2-LeaveGroup${stageSuffix}`,
+      runtime: lambda.Runtime.RUBY_3_2,
+      handler: 'handlers/appsync_handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        DYNAMODB_TABLE_NAME: this.table.tableName,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Grant DynamoDB permissions to Lambda
+    this.table.grantReadWriteData(leaveGroupLambda);
+
+    // Lambda Data Source
+    const leaveGroupLambdaDataSource = this.api.addLambdaDataSource(
+      'LeaveGroupLambdaDataSource',
+      leaveGroupLambda
+    );
+
+    // Mutation: leaveGroup (Lambda Resolver)
+    leaveGroupLambdaDataSource.createResolver('LeaveGroupResolver', {
+      typeName: 'Mutation',
+      fieldName: 'leaveGroup',
     });
 
     // Output API endpoint

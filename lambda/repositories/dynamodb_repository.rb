@@ -62,6 +62,106 @@ class DynamoDBRepository
     false
   end
 
+  # グループIDとドメインでグループを検索
+  def find_group(group_id, domain)
+    return nil unless @dynamodb
+
+    result = @dynamodb.get_item(
+      table_name: @table_name,
+      key: {
+        'pk' => "DOMAIN##{domain}",
+        'sk' => "GROUP##{group_id}#METADATA"
+      }
+    )
+
+    return nil unless result.item
+
+    item_to_group(result.item)
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    nil
+  end
+
+  # グループ全体を削除（ホスト退出時）
+  def dissolve_group(group_id, domain)
+    return false unless @dynamodb
+
+    # 1. グループ内の全アイテムを取得
+    result = @dynamodb.query(
+      table_name: @table_name,
+      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      expression_attribute_values: {
+        ':pk' => "DOMAIN##{domain}",
+        ':sk_prefix' => "GROUP##{group_id}"
+      }
+    )
+
+    # 2. 全アイテムを削除
+    result.items.each do |item|
+      @dynamodb.delete_item(
+        table_name: @table_name,
+        key: {
+          'pk' => item['pk'],
+          'sk' => item['sk']
+        }
+      )
+    end
+
+    # 3. 各ノードの所属情報も削除
+    node_items = result.items.select { |item| item['sk'].include?('#NODE#') }
+    node_items.each do |item|
+      node_id = item['nodeId']
+      @dynamodb.delete_item(
+        table_name: @table_name,
+        key: {
+          'pk' => "NODE##{node_id}",
+          'sk' => 'METADATA'
+        }
+      )
+    end
+
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
+  # ノードをグループから削除（一般メンバー退出時）
+  def remove_node_from_group(group_id, domain, node_id)
+    return false unless @dynamodb
+
+    # TransactWriteItems でアトミックに削除
+    @dynamodb.transact_write_items(
+      transact_items: [
+        # 1. グループ内のノード情報を削除
+        {
+          delete: {
+            table_name: @table_name,
+            key: {
+              'pk' => "DOMAIN##{domain}",
+              'sk' => "GROUP##{group_id}#NODE##{node_id}"
+            }
+          }
+        },
+        # 2. ノードの所属情報を削除
+        {
+          delete: {
+            table_name: @table_name,
+            key: {
+              'pk' => "NODE##{node_id}",
+              'sk' => 'METADATA'
+            }
+          }
+        }
+      ]
+    )
+
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
   private
 
   def item_to_group(item)
