@@ -11,9 +11,19 @@ export class MeshV2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    // Stage取得（デフォルト: stg）
+    const stage = this.node.tryGetContext('stage') || 'stg';
+    const stageSuffix = stage === 'prod' ? '' : `-${stage}`;
+
+    // Stack全体にタグ付与
+    cdk.Tags.of(this).add('Project', 'MeshV2');
+    cdk.Tags.of(this).add('Stage', stage);
+    cdk.Tags.of(this).add('Service', 'AppSync');
+    cdk.Tags.of(this).add('ManagedBy', 'CDK');
+
     // DynamoDB Table for Mesh v2
     this.table = new dynamodb.Table(this, 'MeshV2Table', {
-      tableName: 'MeshV2Table',
+      tableName: `MeshV2Table${stageSuffix}`,
       partitionKey: {
         name: 'pk',
         type: dynamodb.AttributeType.STRING,
@@ -28,6 +38,9 @@ export class MeshV2Stack extends cdk.Stack {
         pointInTimeRecoveryEnabled: false, // Disable for cost optimization in dev
       },
     });
+
+    // DynamoDB Tableにタグ付与
+    cdk.Tags.of(this.table).add('ResourceType', 'DynamoDB');
 
     // GSI: GroupIdIndex for reverse lookup (groupId -> domain)
     this.table.addGlobalSecondaryIndex({
@@ -57,7 +70,7 @@ export class MeshV2Stack extends cdk.Stack {
 
     // AppSync GraphQL API for Mesh v2
     this.api = new appsync.GraphqlApi(this, 'MeshV2Api', {
-      name: 'MeshV2Api',
+      name: `MeshV2Api${stageSuffix}`,
       definition: appsync.Definition.fromFile(path.join(__dirname, '../graphql/schema.graphql')),
       authorizationConfig: {
         defaultAuthorization: {
@@ -73,6 +86,9 @@ export class MeshV2Stack extends cdk.Stack {
         excludeVerboseContent: false,
       },
     });
+
+    // AppSync APIにタグ付与
+    cdk.Tags.of(this.api).add('ResourceType', 'GraphQLAPI');
 
     // DynamoDB Data Source
     const dynamoDbDataSource = this.api.addDynamoDbDataSource(

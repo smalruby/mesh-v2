@@ -3,7 +3,13 @@ import * as cdk from 'aws-cdk-lib/core';
 import { MeshV2Stack } from '../lib/mesh-v2-stack';
 
 const app = new cdk.App();
-new MeshV2Stack(app, 'MeshV2Stack', {
+
+// Stage取得（デフォルト: stg）
+const stage = app.node.tryGetContext('stage') || 'stg';
+const stackName = stage === 'prod' ? 'MeshV2Stack' : `MeshV2Stack-${stage}`;
+
+new MeshV2Stack(app, stackName, {
+  stackName: stackName,
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */

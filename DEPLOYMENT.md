@@ -92,12 +92,47 @@ npx cdk diff
 
 ## 5. デプロイ実行
 
-```bash
-# スタックのデプロイ
-npx cdk deploy
+### 5.1 ステージング環境と本番環境
 
-# 確認プロンプトが表示されるので、y を入力
+Mesh v2では、ステージング環境（stg）と本番環境（prod）を分離して管理します。
+
+**ステージング環境へのデプロイ:**
+
+```bash
+# ステージング環境（デフォルト）
+npx cdk deploy --context stage=stg
+
+# または --context を省略（cdk.jsonのデフォルト値 "stg" が使用される）
+npx cdk deploy
 ```
+
+**本番環境へのデプロイ:**
+
+```bash
+# 本番環境
+npx cdk deploy --context stage=prod
+```
+
+### 5.2 デプロイされるリソース名
+
+| Stage | Stack名 | DynamoDB Table名 | AppSync API名 |
+|-------|---------|------------------|---------------|
+| stg | MeshV2Stack-stg | MeshV2Table-stg | MeshV2Api-stg |
+| prod | MeshV2Stack | MeshV2Table | MeshV2Api |
+
+### 5.3 リソースタグ
+
+すべてのリソースには以下のタグが自動的に付与されます:
+
+| タグキー | 値（stg） | 値（prod） |
+|---------|----------|-----------|
+| Project | MeshV2 | MeshV2 |
+| Stage | stg | prod |
+| Service | AppSync | AppSync |
+| ManagedBy | CDK | CDK |
+| ResourceType | GraphQLAPI / DynamoDB | GraphQLAPI / DynamoDB |
+
+これらのタグは、AWS Cost Explorer でのコスト分析やリソースグルーピングに使用できます。
 
 デプロイには数分かかります。進行状況がリアルタイムで表示されます。
 
@@ -237,18 +272,102 @@ curl -X POST "$APPSYNC_ENDPOINT" \
   }' | jq
 ```
 
-### 6.4 DynamoDB Tableの確認
+### 6.4 リソースタグの確認
+
+デプロイされたリソースにタグが正しく付与されているか確認します。
+
+**AppSync APIのタグ確認:**
 
 ```bash
-# テーブルの詳細を確認
+# ステージング環境
+API_ARN=$(aws appsync list-graphql-apis --query "graphqlApis[?name=='MeshV2Api-stg'].arn" --output text)
+aws appsync list-tags-for-resource --resource-arn $API_ARN
+
+# 本番環境
+API_ARN=$(aws appsync list-graphql-apis --query "graphqlApis[?name=='MeshV2Api'].arn" --output text)
+aws appsync list-tags-for-resource --resource-arn $API_ARN
+```
+
+期待される出力:
+```json
+{
+    "tags": {
+        "Project": "MeshV2",
+        "Service": "AppSync",
+        "Stage": "stg",
+        "ResourceType": "GraphQLAPI",
+        "ManagedBy": "CDK"
+    }
+}
+```
+
+**DynamoDB Tableのタグ確認:**
+
+```bash
+# ステージング環境
+TABLE_ARN=$(aws dynamodb describe-table --table-name MeshV2Table-stg --query 'Table.TableArn' --output text)
+aws dynamodb list-tags-of-resource --resource-arn $TABLE_ARN
+
+# 本番環境
+TABLE_ARN=$(aws dynamodb describe-table --table-name MeshV2Table --query 'Table.TableArn' --output text)
+aws dynamodb list-tags-of-resource --resource-arn $TABLE_ARN
+```
+
+期待される出力:
+```json
+{
+    "Tags": [
+        {
+            "Key": "Project",
+            "Value": "MeshV2"
+        },
+        {
+            "Key": "Stage",
+            "Value": "stg"
+        },
+        {
+            "Key": "Service",
+            "Value": "AppSync"
+        },
+        {
+            "Key": "ResourceType",
+            "Value": "DynamoDB"
+        },
+        {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+        }
+    ]
+}
+```
+
+### 6.5 DynamoDB Tableの確認
+
+```bash
+# ステージング環境のテーブル詳細を確認
+aws dynamodb describe-table --table-name MeshV2Table-stg
+
+# 本番環境のテーブル詳細を確認
 aws dynamodb describe-table --table-name MeshV2Table
 
 # GSIの確認（オプション1: JSON形式で詳細表示 - 推奨）
+# ステージング環境
+aws dynamodb describe-table --table-name MeshV2Table-stg \
+  --query 'Table.GlobalSecondaryIndexes[*].{IndexName:IndexName,KeySchema:KeySchema}' \
+  --output json
+
+# 本番環境
 aws dynamodb describe-table --table-name MeshV2Table \
   --query 'Table.GlobalSecondaryIndexes[*].{IndexName:IndexName,KeySchema:KeySchema}' \
   --output json
 
 # GSIの確認（オプション2: テーブル形式でインデックス名のみ）
+# ステージング環境
+aws dynamodb describe-table --table-name MeshV2Table-stg \
+  --query 'Table.GlobalSecondaryIndexes[*].IndexName' \
+  --output table
+
+# 本番環境
 aws dynamodb describe-table --table-name MeshV2Table \
   --query 'Table.GlobalSecondaryIndexes[*].IndexName' \
   --output table
@@ -310,13 +429,91 @@ X-Rayトレーシングが有効になっているため、リクエストのト
 2. **Service map** でMeshV2Apiを確認
 3. **Traces** でリクエストの詳細を確認
 
-## 9. リソースの削除（必要な場合）
+## 9. AWS Resource Groups でのリソース管理
+
+タグを使ってリソースをグルーピングし、一元管理できます。
+
+### 9.1 リソースグループの作成
+
+**ステージング環境のリソースグループ:**
+
+```bash
+aws resource-groups create-group \
+  --name "MeshV2-stg" \
+  --resource-query '{
+    "Type": "TAG_FILTERS_1_0",
+    "Query": "{\"ResourceTypeFilters\":[\"AWS::AllSupported\"],\"TagFilters\":[{\"Key\":\"Project\",\"Values\":[\"MeshV2\"]},{\"Key\":\"Stage\",\"Values\":[\"stg\"]}]}"
+  }' \
+  --tags Project=MeshV2,Stage=stg
+```
+
+**本番環境のリソースグループ:**
+
+```bash
+aws resource-groups create-group \
+  --name "MeshV2-prod" \
+  --resource-query '{
+    "Type": "TAG_FILTERS_1_0",
+    "Query": "{\"ResourceTypeFilters\":[\"AWS::AllSupported\"],\"TagFilters\":[{\"Key\":\"Project\",\"Values\":[\"MeshV2\"]},{\"Key\":\"Stage\",\"Values\":[\"prod\"]}]}"
+  }' \
+  --tags Project=MeshV2,Stage=prod
+```
+
+### 9.2 リソースグループの確認
+
+```bash
+# グループ一覧
+aws resource-groups list-groups
+
+# グループ内のリソース確認
+aws resource-groups list-group-resources --group-name MeshV2-stg
+```
+
+### 9.3 コスト分析
+
+AWS Cost Explorerでタグを使ったコスト分析が可能です。
+
+**ステージング環境のコスト:**
+
+```bash
+aws ce get-cost-and-usage \
+  --time-period Start=2025-01-01,End=2025-01-31 \
+  --granularity MONTHLY \
+  --metrics "UnblendedCost" \
+  --filter '{
+    "Tags": {
+      "Key": "Stage",
+      "Values": ["stg"]
+    }
+  }'
+```
+
+**リソースタイプ別コスト:**
+
+```bash
+aws ce get-cost-and-usage \
+  --time-period Start=2025-01-01,End=2025-01-31 \
+  --granularity MONTHLY \
+  --metrics "UnblendedCost" \
+  --group-by Type=TAG,Key=ResourceType \
+  --filter '{
+    "Tags": {
+      "Key": "Project",
+      "Values": ["MeshV2"]
+    }
+  }'
+```
+
+## 10. リソースの削除（必要な場合）
 
 開発環境のリソースを削除する場合:
 
 ```bash
-# スタックの削除
-npx cdk destroy
+# ステージング環境のスタック削除
+npx cdk destroy --context stage=stg
+
+# 本番環境のスタック削除（慎重に）
+npx cdk destroy --context stage=prod
 
 # 確認プロンプトで y を入力
 ```
