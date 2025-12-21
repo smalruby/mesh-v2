@@ -1,8 +1,10 @@
 /**
  * Mesh v2 Client Library
- * Pure JavaScript GraphQL client for AWS AppSync
- * No external dependencies - uses native fetch and WebSocket APIs
+ * JavaScript GraphQL client for AWS AppSync with WebSocket subscriptions
  */
+
+import { Amplify } from 'https://esm.sh/aws-amplify@6.0.0';
+import { generateClient } from 'https://esm.sh/aws-amplify@6.0.0/api';
 
 class MeshClient {
   constructor(config) {
@@ -12,6 +14,29 @@ class MeshClient {
     this.connected = false;
     this.subscriptions = new Map();
     this.eventHandlers = new Map();
+
+    // Configure Amplify for AppSync
+    Amplify.configure({
+      API: {
+        GraphQL: {
+          endpoint: this.endpoint,
+          region: this.extractRegion(this.endpoint),
+          defaultAuthMode: 'apiKey',
+          apiKey: this.apiKey
+        }
+      }
+    });
+
+    // Create GraphQL client for subscriptions
+    this.graphqlClient = generateClient();
+  }
+
+  /**
+   * Extract AWS region from AppSync endpoint URL
+   */
+  extractRegion(endpoint) {
+    const match = endpoint.match(/https:\/\/\w+\.appsync-api\.([^.]+)\.amazonaws\.com/);
+    return match ? match[1] : 'ap-northeast-1';
   }
 
   /**
@@ -222,62 +247,135 @@ class MeshClient {
   }
 
   /**
-   * Subscribe to sensor data updates
-   * Note: Real implementation should use WebSocket subscriptions
-   * For prototype, we use polling with listGroupStatuses query
+   * Subscribe to sensor data updates via WebSocket
    */
   subscribeToDataUpdates(groupId, domain, callback) {
     console.log('Subscription: onDataUpdateInGroup', { groupId, domain });
 
-    // Store callback for later use
     const subscriptionId = `data-${groupId}`;
     this.eventHandlers.set(subscriptionId, callback);
 
-    // Poll for updates every 2 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        const statuses = await this.listGroupStatuses(groupId, domain);
-        if (callback && statuses) {
-          callback(statuses);
+    // GraphQL subscription query
+    const subscription = `
+      subscription OnDataUpdateInGroup($groupId: ID!, $domain: String!) {
+        onDataUpdateInGroup(groupId: $groupId, domain: $domain) {
+          nodeId
+          groupId
+          domain
+          data {
+            key
+            value
+          }
+          timestamp
         }
-      } catch (error) {
-        console.error('Error polling group statuses:', error);
       }
-    }, 2000);
+    `;
 
-    this.subscriptions.set(subscriptionId, pollInterval);
+    // Subscribe using Amplify
+    const sub = this.graphqlClient.graphql({
+      query: subscription,
+      variables: { groupId, domain: domain || this.domain }
+    }).subscribe({
+      next: ({ data }) => {
+        console.log('Subscription data received:', data);
+        if (callback && data && data.onDataUpdateInGroup) {
+          // Fetch all group statuses when a data update is received
+          this.listGroupStatuses(groupId, domain || this.domain)
+            .then(statuses => callback(statuses))
+            .catch(error => console.error('Error fetching group statuses:', error));
+        }
+      },
+      error: (error) => {
+        console.error('Subscription error:', error);
+      }
+    });
+
+    this.subscriptions.set(subscriptionId, sub);
 
     return subscriptionId;
   }
 
   /**
-   * Subscribe to events in group
+   * Subscribe to events in group via WebSocket
    */
   subscribeToEvents(groupId, domain, callback) {
     console.log('Subscription: onEventInGroup', { groupId, domain });
 
-    // Store callback for later use
     const subscriptionId = `event-${groupId}`;
     this.eventHandlers.set(subscriptionId, callback);
 
-    // For prototype: poll for events every 2 seconds
-    const pollInterval = setInterval(async () => {
-      console.log('Polling for events...');
-    }, 2000);
+    // GraphQL subscription query
+    const subscription = `
+      subscription OnEventInGroup($groupId: ID!, $domain: String!) {
+        onEventInGroup(groupId: $groupId, domain: $domain) {
+          name
+          firedByNodeId
+          groupId
+          domain
+          payload
+          timestamp
+        }
+      }
+    `;
 
-    this.subscriptions.set(subscriptionId, pollInterval);
+    // Subscribe using Amplify
+    const sub = this.graphqlClient.graphql({
+      query: subscription,
+      variables: { groupId, domain: domain || this.domain }
+    }).subscribe({
+      next: ({ data }) => {
+        console.log('Event received:', data);
+        if (callback && data && data.onEventInGroup) {
+          callback(data.onEventInGroup);
+        }
+      },
+      error: (error) => {
+        console.error('Event subscription error:', error);
+      }
+    });
+
+    this.subscriptions.set(subscriptionId, sub);
 
     return subscriptionId;
   }
 
   /**
-   * Subscribe to group dissolution
+   * Subscribe to group dissolution via WebSocket
    */
   subscribeToGroupDissolve(groupId, domain, callback) {
     console.log('Subscription: onGroupDissolve', { groupId, domain });
 
     const subscriptionId = `dissolve-${groupId}`;
     this.eventHandlers.set(subscriptionId, callback);
+
+    // GraphQL subscription query
+    const subscription = `
+      subscription OnGroupDissolve($groupId: ID!, $domain: String!) {
+        onGroupDissolve(groupId: $groupId, domain: $domain) {
+          groupId
+          domain
+          message
+        }
+      }
+    `;
+
+    // Subscribe using Amplify
+    const sub = this.graphqlClient.graphql({
+      query: subscription,
+      variables: { groupId, domain: domain || this.domain }
+    }).subscribe({
+      next: ({ data }) => {
+        console.log('Group dissolved:', data);
+        if (callback && data && data.onGroupDissolve) {
+          callback(data.onGroupDissolve);
+        }
+      },
+      error: (error) => {
+        console.error('Dissolve subscription error:', error);
+      }
+    });
+
+    this.subscriptions.set(subscriptionId, sub);
 
     return subscriptionId;
   }
@@ -287,7 +385,11 @@ class MeshClient {
    */
   unsubscribe(subscriptionId) {
     if (this.subscriptions.has(subscriptionId)) {
-      clearInterval(this.subscriptions.get(subscriptionId));
+      const subscription = this.subscriptions.get(subscriptionId);
+      // Amplify subscriptions have an unsubscribe method
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe();
+      }
       this.subscriptions.delete(subscriptionId);
     }
     this.eventHandlers.delete(subscriptionId);
@@ -298,8 +400,10 @@ class MeshClient {
    */
   disconnect() {
     // Clear all subscriptions
-    for (const [id, interval] of this.subscriptions.entries()) {
-      clearInterval(interval);
+    for (const [id, subscription] of this.subscriptions.entries()) {
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe();
+      }
     }
     this.subscriptions.clear();
     this.eventHandlers.clear();
@@ -364,3 +468,6 @@ class ChangeDetector {
     this.previousValues.clear();
   }
 }
+
+// Export classes for use in app.js
+export { MeshClient, RateLimiter, ChangeDetector };

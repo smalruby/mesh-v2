@@ -3,6 +3,8 @@
  * Handles UI interactions and state management
  */
 
+import { MeshClient, RateLimiter, ChangeDetector } from './mesh-client.js';
+
 // Application state
 const state = {
   client: null,
