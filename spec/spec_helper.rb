@@ -2,6 +2,10 @@ require 'json'
 require 'net/http'
 require 'uri'
 require 'date'
+require 'securerandom'
+
+# Load support files
+Dir[File.join(__dir__, 'support', '**', '*.rb')].each { |f| require f }
 
 RSpec.configure do |config|
   config.before(:suite) do
