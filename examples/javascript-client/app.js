@@ -277,6 +277,9 @@ function selectGroup(groupId, groupName, domain, hostId) {
   event.target.closest('.group-item').classList.add('selected');
 
   console.log('Selected group:', state.selectedGroup);
+
+  // Update button states
+  updateUI();
 }
 
 /**
