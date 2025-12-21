@@ -1,0 +1,76 @@
+require_relative '../domain/group'
+
+# DynamoDB Repository
+# データアクセス層 - DynamoDBとの通信を担当
+class DynamoDBRepository
+  def initialize(dynamodb_client = nil, table_name = nil)
+    @dynamodb = dynamodb_client
+    @table_name = table_name || ENV['DYNAMODB_TABLE_NAME'] || 'MeshV2Table-stg'
+  end
+
+  # hostId + domain でグループを検索
+  def find_group_by_host_and_domain(host_id, domain)
+    return nil unless @dynamodb
+
+    # DynamoDB Query操作
+    # pk = DOMAIN#{domain}, sk begins_with GROUP#
+    # FilterExpression: hostId = :hostId
+    result = @dynamodb.query(
+      table_name: @table_name,
+      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
+      expression_attribute_values: {
+        ':pk' => "DOMAIN##{domain}",
+        ':sk_prefix' => 'GROUP#',
+        ':hostId' => host_id
+      },
+      filter_expression: 'hostId = :hostId'
+    )
+
+    items = result.items.select { |item| item['sk'].end_with?('#METADATA') }
+    return nil if items.empty?
+
+    item_to_group(items.first)
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    # エラーハンドリング（ログ出力など）
+    puts "DynamoDB Error: #{e.message}"
+    nil
+  end
+
+  # グループを保存
+  def save_group(group)
+    return false unless @dynamodb
+
+    # DynamoDB PutItem操作
+    @dynamodb.put_item(
+      table_name: @table_name,
+      item: {
+        'pk' => "DOMAIN##{group.domain}",
+        'sk' => "GROUP##{group.id}#METADATA",
+        'id' => group.id,
+        'domain' => group.domain,
+        'fullId' => group.full_id,
+        'name' => group.name,
+        'hostId' => group.host_id,
+        'createdAt' => group.created_at,
+        'gsi_pk' => "GROUP##{group.id}",
+        'gsi_sk' => "DOMAIN##{group.domain}"
+      }
+    )
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
+  private
+
+  def item_to_group(item)
+    Group.new(
+      id: item['id'],
+      name: item['name'],
+      host_id: item['hostId'],
+      domain: item['domain'],
+      created_at: item['createdAt']
+    )
+  end
+end

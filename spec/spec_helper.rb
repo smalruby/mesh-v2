@@ -5,9 +5,11 @@ require 'date'
 
 RSpec.configure do |config|
   config.before(:suite) do
-    # 環境変数チェック
-    raise 'APPSYNC_ENDPOINT is not set' unless ENV['APPSYNC_ENDPOINT']
-    raise 'APPSYNC_API_KEY is not set' unless ENV['APPSYNC_API_KEY']
+    # 環境変数チェック（結合テストのみ）
+    if RSpec.configuration.files_to_run.any? { |f| f.include?('spec/requests/') }
+      raise 'APPSYNC_ENDPOINT is not set' unless ENV['APPSYNC_ENDPOINT']
+      raise 'APPSYNC_API_KEY is not set' unless ENV['APPSYNC_API_KEY']
+    end
   end
 
   # RSpecの設定
