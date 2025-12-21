@@ -116,17 +116,20 @@ type Mutation {
 type Subscription {
   # グループ内のデータ更新を購読
   # reportDataByNode mutation がトリガー
-  onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus!
+  # Note: nullableにすることで、NodeStatusが存在しない場合でもエラーを防ぐ
+  onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus
     @aws_subscribe(mutations: ["reportDataByNode"])
 
   # グループ内のイベントを購読
   # fireEventByNode mutation がトリガー
-  onEventInGroup(groupId: ID!, domain: String!): Event!
+  # Note: nullableにすることで、Eventが存在しない場合でもエラーを防ぐ
+  onEventInGroup(groupId: ID!, domain: String!): Event
     @aws_subscribe(mutations: ["fireEventByNode"])
 
   # グループ解散通知を購読
   # dissolveGroup mutation がトリガー
-  onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload!
+  # Note: nullableにすることで、GroupDissolvePayloadが存在しない場合でもエラーを防ぐ
+  onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload
     @aws_subscribe(mutations: ["dissolveGroup"])
 }
 

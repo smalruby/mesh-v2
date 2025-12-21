@@ -35,6 +35,34 @@ RSpec.describe "Subscriptions API", type: :request do
       # Note: onGroupDissolveは型の不一致により現在コメントアウト
       # 将来的な実装で有効化予定
     end
+
+    it "Subscriptionの戻り値型がnullable（非必須）である" do
+      schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
+
+      # onDataUpdateInGroup should return NodeStatus (nullable, not NodeStatus!)
+      expect(schema_content).to match(
+        /onDataUpdateInGroup\([^)]+\):\s*NodeStatus\s+@aws_subscribe/
+      )
+      expect(schema_content).not_to match(
+        /onDataUpdateInGroup\([^)]+\):\s*NodeStatus!\s+@aws_subscribe/
+      )
+
+      # onEventInGroup should return Event (nullable, not Event!)
+      expect(schema_content).to match(
+        /onEventInGroup\([^)]+\):\s*Event\s+@aws_subscribe/
+      )
+      expect(schema_content).not_to match(
+        /onEventInGroup\([^)]+\):\s*Event!\s+@aws_subscribe/
+      )
+
+      # onGroupDissolve should return GroupDissolvePayload (nullable, not GroupDissolvePayload!)
+      expect(schema_content).to match(
+        /onGroupDissolve\([^)]+\):\s*GroupDissolvePayload\s+@aws_subscribe/
+      )
+      expect(schema_content).not_to match(
+        /onGroupDissolve\([^)]+\):\s*GroupDissolvePayload!\s+@aws_subscribe/
+      )
+    end
   end
 
   describe "Subscription behavior tests" do
