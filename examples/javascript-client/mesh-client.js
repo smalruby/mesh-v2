@@ -3,8 +3,8 @@
  * JavaScript GraphQL client for AWS AppSync with WebSocket subscriptions
  */
 
-import { Amplify } from 'https://esm.sh/aws-amplify@6.0.0';
-import { generateClient } from 'https://esm.sh/aws-amplify@6.0.0/api';
+import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/api';
 
 class MeshClient {
   constructor(config) {

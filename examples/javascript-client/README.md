@@ -39,13 +39,17 @@ You'll need:
 - **GraphQL API Endpoint**: `https://....appsync-api....amazonaws.com/graphql`
 - **API Key**: `da2-...`
 
-### 3. Start the Server
+### 3. Build and Start the Server
 
 ```bash
 npm start
 ```
 
-The server will start on `http://localhost:3000`
+This will:
+1. Build the mesh-client bundle with esbuild (includes AWS Amplify)
+2. Start the server on `http://localhost:3000`
+
+**Note**: The `npm start` command automatically runs `npm run build` first.
 
 ### 4. Open in Browser
 
@@ -333,11 +337,19 @@ This is **Phase 1** of the prototype. The following features are placeholders:
 # Install dependencies
 npm install
 
-# Start server
+# Build mesh-client bundle (includes AWS Amplify)
+npm run build
+
+# Start server (automatically runs build first)
 npm start
 
 # Server runs on http://localhost:3000
 ```
+
+**Build Process:**
+- Uses esbuild to bundle mesh-client.js with AWS Amplify dependencies
+- Output: `mesh-client.bundle.js` (~461KB)
+- Build artifacts are git-ignored (.gitignore)
 
 ### Code Structure
 
