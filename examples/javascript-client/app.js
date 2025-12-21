@@ -295,7 +295,6 @@ async function handleJoinGroup() {
     const result = await state.client.joinGroup(
       state.selectedGroup.id,
       state.currentNodeId,
-      'Node-' + state.currentNodeId.substr(-4),
       state.selectedGroup.domain
     );
 

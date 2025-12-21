@@ -92,39 +92,27 @@ class MeshClient {
   }
 
   /**
-   * Join a group (placeholder - will be implemented in backend)
+   * Join a group
    */
-  async joinGroup(groupId, nodeId, nodeName, domain) {
-    // Note: This mutation needs to be implemented in backend Phase 2-4
+  async joinGroup(groupId, nodeId, domain) {
     const query = `
-      mutation JoinGroup($groupId: ID!, $nodeId: ID!, $nodeName: String!, $domain: String!) {
-        joinGroup(groupId: $groupId, nodeId: $nodeId, nodeName: $nodeName, domain: $domain) {
-          nodeId
-          nodeName
+      mutation JoinGroup($groupId: ID!, $nodeId: ID!, $domain: String!) {
+        joinGroup(groupId: $groupId, nodeId: $nodeId, domain: $domain) {
+          id
+          name
           groupId
-          joinedAt
+          domain
         }
       }
     `;
 
-    try {
-      const data = await this.execute(query, {
-        groupId,
-        nodeId,
-        nodeName,
-        domain: domain || this.domain
-      });
-      return data.joinGroup;
-    } catch (error) {
-      console.warn('joinGroup not yet implemented in backend:', error.message);
-      // Return mock data for prototype
-      return {
-        nodeId,
-        nodeName,
-        groupId,
-        joinedAt: new Date().toISOString()
-      };
-    }
+    const data = await this.execute(query, {
+      groupId,
+      nodeId,
+      domain: domain || this.domain
+    });
+
+    return data.joinGroup;
   }
 
   /**
@@ -136,7 +124,7 @@ class MeshClient {
         dissolveGroup(groupId: $groupId, hostId: $hostId, domain: $domain) {
           groupId
           domain
-          dissolvedAt
+          message
         }
       }
     `;
@@ -155,7 +143,7 @@ class MeshClient {
    */
   async reportDataByNode(nodeId, groupId, domain, data) {
     const query = `
-      mutation ReportDataByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $data: [KeyValuePairInput!]!) {
+      mutation ReportDataByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $data: [SensorDataInput!]!) {
         reportDataByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, data: $data) {
           nodeId
           groupId
