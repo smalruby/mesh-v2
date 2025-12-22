@@ -83,8 +83,8 @@ RSpec.describe "Node Status Management", type: :request do
 
       puts "\n✓ Node Status integration test passed!"
       puts "  - Node1 data successfully stored and retrieved"
-      puts "  - Temperature: #{temp_data['value']}"
-      puts "  - Humidity: #{humidity_data['value']}"
+      puts "  - Temperature: #{temp_data["value"]}"
+      puts "  - Humidity: #{humidity_data["value"]}"
     end
 
     it "複数ノードのデータを正しく取得できる" do

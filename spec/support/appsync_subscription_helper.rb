@@ -1,8 +1,8 @@
-require 'faye/websocket'
-require 'eventmachine'
-require 'json'
-require 'securerandom'
-require 'base64'
+require "faye/websocket"
+require "eventmachine"
+require "json"
+require "securerandom"
+require "base64"
 
 # AppSync WebSocket Subscription Helper
 # AppSyncのリアルタイムエンドポイントに接続してSubscriptionをテストするヘルパー
@@ -45,20 +45,20 @@ class AppSyncSubscriptionHelper
 
       ws.on :open do
         puts "[Subscription] WebSocket connection established"
-        send_message(ws, type: 'connection_init')
+        send_message(ws, type: "connection_init")
       end
 
       ws.on :message do |event|
         message = JSON.parse(event.data)
-        msg_type = message['type']
+        msg_type = message["type"]
 
         case msg_type
-        when 'connection_ack'
+        when "connection_ack"
           puts "[Subscription] Connection acknowledged"
           # Start subscription
           send_message(ws, {
             id: subscription_id,
-            type: 'start',
+            type: "start",
             payload: {
               data: JSON.generate({
                 query: query,
@@ -67,13 +67,13 @@ class AppSyncSubscriptionHelper
               extensions: {
                 authorization: {
                   host: @host,
-                  'x-api-key': @api_key
+                  "x-api-key": @api_key
                 }
               }
             }
           })
 
-        when 'start_ack'
+        when "start_ack"
           puts "[Subscription] Subscription started, waiting #{wait_time}s before executing mutation..."
           subscription_ready = true
 
@@ -90,8 +90,8 @@ class AppSyncSubscriptionHelper
             end
           end
 
-        when 'data'
-          data = message.dig('payload', 'data')
+        when "data"
+          data = message.dig("payload", "data")
           if data
             puts "[Subscription] Data received!"
             received_data << data
@@ -103,12 +103,12 @@ class AppSyncSubscriptionHelper
             end
           end
 
-        when 'error'
-          error_msg = message['payload']
+        when "error"
+          error_msg = message["payload"]
           puts "[Subscription] Error: #{error_msg}"
           error = SubscriptionError.new("Subscription error: #{error_msg}")
 
-        when 'ka'
+        when "ka"
           # Keep-alive (silent)
         end
       end
@@ -133,8 +133,8 @@ class AppSyncSubscriptionHelper
 
   def convert_to_websocket_endpoint(https_endpoint)
     https_endpoint
-      .sub('https://', 'wss://')
-      .sub('.appsync-api.', '.appsync-realtime-api.')
+      .sub("https://", "wss://")
+      .sub(".appsync-api.", ".appsync-realtime-api.")
   end
 
   def extract_host(endpoint)
@@ -144,15 +144,15 @@ class AppSyncSubscriptionHelper
   def create_websocket_connection
     # Encode authorization header for AppSync WebSocket
     header = Base64.strict_encode64(JSON.generate({
-      'host' => @host,
-      'x-api-key' => @api_key
+      "host" => @host,
+      "x-api-key" => @api_key
     }))
-    payload = Base64.strict_encode64('{}')
+    payload = Base64.strict_encode64("{}")
 
     # Build WebSocket URL with authentication
     ws_url_with_auth = "#{@ws_endpoint}?header=#{header}&payload=#{payload}"
 
-    Faye::WebSocket::Client.new(ws_url_with_auth, ['graphql-ws'])
+    Faye::WebSocket::Client.new(ws_url_with_auth, ["graphql-ws"])
   end
 
   def send_message(ws, message)

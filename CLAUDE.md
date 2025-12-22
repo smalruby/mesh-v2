@@ -760,6 +760,36 @@ All resources are automatically tagged. Use tags for:
 - Resource grouping
 - Environment identification
 
+### 7. Ruby String Literals
+
+Always use double-quoted strings in Ruby code to maintain consistency with StandardRB style:
+
+```ruby
+# Good
+require "json"
+require "aws-sdk-dynamodb"
+
+message = "Hello, world!"
+interpolation = "Value: #{variable}"
+symbol = :"my-symbol"
+
+# Bad
+require 'json'
+require 'aws-sdk-dynamodb'
+
+message = 'Hello, world!'
+interpolation = 'Value: #{variable}'
+symbol = :'my-symbol'
+```
+
+**Rationale**:
+- Consistent with StandardRB linter rules
+- Double quotes support interpolation without changes
+- Reduces cognitive overhead in code reviews
+- Aligns with Ruby community best practices
+
+Run `bundle exec standardrb` to check for violations and `bundle exec standardrb --fix` to auto-fix.
+
 ## GraphQL Schema Notes
 
 ### Key Types

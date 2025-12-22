@@ -46,9 +46,9 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
         expect(result["nodeId"]).to eq(node_id)
 
         puts "\n✓ reportDataByNode returns all required fields for subscription filtering"
-        puts "  - groupId: #{result['groupId']}"
-        puts "  - domain: #{result['domain']}"
-        puts "  - nodeId: #{result['nodeId']}"
+        puts "  - groupId: #{result["groupId"]}"
+        puts "  - domain: #{result["domain"]}"
+        puts "  - nodeId: #{result["nodeId"]}"
       end
 
       it "mutation responseのgroupIdとdomainが入力パラメータと一致する" do

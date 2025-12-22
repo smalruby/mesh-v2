@@ -101,10 +101,10 @@ RSpec.describe "Subscription E2E Test", type: :request do
       expect(subscription_data["data"].length).to eq(2)
 
       puts "\n✓ Subscription E2E test passed!"
-      puts "  - groupId: #{subscription_data['groupId']}"
-      puts "  - domain: #{subscription_data['domain']}"
-      puts "  - nodeId: #{subscription_data['nodeId']}"
-      puts "  - data: #{subscription_data['data'].map { |d| "#{d['key']}=#{d['value']}" }.join(', ')}"
+      puts "  - groupId: #{subscription_data["groupId"]}"
+      puts "  - domain: #{subscription_data["domain"]}"
+      puts "  - nodeId: #{subscription_data["nodeId"]}"
+      puts "  - data: #{subscription_data["data"].map { |d| "#{d["key"]}=#{d["value"]}" }.join(", ")}"
       puts "=" * 80
     end
   end
