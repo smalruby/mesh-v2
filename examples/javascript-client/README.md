@@ -98,6 +98,7 @@ You automatically become the **host** of the created group.
 - Click "Dissolve Group" to exit and dissolve the group (host only)
 - Only the group host can dissolve groups
 - Dissolving removes all members and deletes the group
+- **Group Dissolution Detection**: When a host dissolves a group, all member nodes automatically detect the dissolution via WebSocket subscription and are disconnected from the group
 
 ### 3. Sensor Data
 
@@ -178,10 +179,10 @@ await client.fireEventByNode(nodeId, groupId, domain, eventName, payload)
 // Queries
 await client.listGroupsByDomain(domain)
 
-// Subscriptions (placeholder - polling for prototype)
+// Subscriptions (WebSocket via AppSync)
 client.subscribeToDataUpdates(groupId, domain, callback)
 client.subscribeToEvents(groupId, domain, callback)
-client.subscribeToGroupDissolve(groupId, domain, callback)
+client.subscribeToGroupDissolve(groupId, domain, callback)  // Real-time group dissolution detection
 ```
 
 #### RateLimiter (mesh-client.js)
@@ -228,7 +229,8 @@ if (detector.hasChanged('temperature', 25)) {
    - Connect with same API credentials
    - Click "Refresh Group List"
    - Join "Test Group"
-   - Observe events (when subscriptions implemented)
+   - Observe sensor data and events from Window 1 in real-time
+   - **Test Dissolution Detection**: When Window 1 dissolves the group, Window 2 should automatically detect and show error message
 
 ### Test Scenarios
 
@@ -245,6 +247,8 @@ if (detector.hasChanged('temperature', 25)) {
 - [ ] Dissolve button only enabled when user is host
 - [ ] Dissolve group removes group from list
 - [ ] Host/Member role displays correctly
+- [ ] Member nodes automatically detect and exit when host dissolves group
+- [ ] Dissolution notification displays correct error message
 
 #### Sensor Data
 - [ ] Slider changes update display values
@@ -267,29 +271,29 @@ if (detector.hasChanged('temperature', 25)) {
 
 ## Known Limitations
 
-### Prototype Phase 1
+### Current Implementation Status
 
-This is **Phase 1** of the prototype. The following features are placeholders:
+The prototype has the following implementation status:
 
-1. **WebSocket Subscriptions**
-   - Currently uses polling placeholders
-   - Will be implemented in Phase 2
-   - `subscribeToDataUpdates()` logs but doesn't actually subscribe
-   - `subscribeToEvents()` logs but doesn't actually subscribe
+1. **Implemented WebSocket Subscriptions**
+   - ✅ `subscribeToGroupDissolve()` - Real-time group dissolution detection (Phase 2-4)
+   - ✅ `subscribeToDataUpdates()` - Real-time sensor data updates (Phase 2-2)
+   - ✅ `subscribeToEvents()` - Real-time event notifications (Phase 2-2)
 
-2. **Backend API Gaps**
-   - `joinGroup` mutation not yet in backend (returns mock data)
-   - Backend Phase 2-4 will add join functionality
-   - `dissolveGroup` is implemented and working
+2. **Backend API Status**
+   - ✅ `createGroup` - Fully implemented and working
+   - ✅ `joinGroup` - Fully implemented and working
+   - ✅ `dissolveGroup` - Fully implemented with automatic member notification
+   - ✅ `reportDataByNode` - Fully implemented with group existence validation
+   - ✅ `fireEventByNode` - Fully implemented with group existence validation
 
-3. **Display of Other Nodes**
-   - "Other Nodes Data" panel is placeholder
-   - Will populate when subscriptions are working
+3. **Display Features**
+   - ✅ "Other Nodes Data" panel displays real-time sensor data from group members
+   - ✅ Event history shows received events from other nodes
+   - ✅ Group dissolution automatically clears UI and shows notification
 
 ### Future Enhancements
 
-- [ ] Implement real WebSocket subscriptions
-- [ ] Display other nodes' sensor data in real-time
 - [ ] Show group members list
 - [ ] Add reconnection logic for network failures
 - [ ] Persist group membership across page refresh

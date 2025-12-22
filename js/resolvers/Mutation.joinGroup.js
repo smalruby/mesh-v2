@@ -10,6 +10,18 @@ export function request(ctx) {
   return {
     operation: 'TransactWriteItems',
     transactItems: [
+      // 0. グループの存在確認 (ConditionCheck)
+      {
+        table: ctx.env.TABLE_NAME,
+        operation: 'ConditionCheck',
+        key: util.dynamodb.toMapValues({
+          pk: `DOMAIN#${domain}`,
+          sk: `GROUP#${groupId}#METADATA`
+        }),
+        condition: {
+          expression: 'attribute_exists(pk)'
+        }
+      },
       // 1. グループ内のノード情報を追加
       {
         table: ctx.env.TABLE_NAME,
