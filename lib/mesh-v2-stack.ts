@@ -168,23 +168,70 @@ export class MeshV2Stack extends cdk.Stack {
 
     // Resolvers for Phase 2-2: High-Frequency Mutations
 
-    // Mutation: reportDataByNode (DynamoDB integration)
-    dynamoDbDataSource.createResolver('ReportDataByNodeResolver', {
+    // Function: checkGroupExists (共通のグループ存在確認)
+    const checkGroupExistsFunction = new appsync.AppsyncFunction(this, 'CheckGroupExistsFunction', {
+      name: 'checkGroupExists',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/checkGroupExists.js'))
+    });
+
+    // Function: reportDataByNode (main logic)
+    const reportDataByNodeFunction = new appsync.AppsyncFunction(this, 'ReportDataByNodeFunction', {
+      name: 'reportDataByNode',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.reportDataByNode.js'))
+    });
+
+    // Pipeline Resolver: reportDataByNode (グループ存在確認 → データ報告)
+    new appsync.Resolver(this, 'ReportDataByNodePipelineResolver', {
+      api: this.api,
       typeName: 'Mutation',
       fieldName: 'reportDataByNode',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.reportDataByNode.js'))
+      pipelineConfig: [checkGroupExistsFunction, reportDataByNodeFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
     });
 
     // None Data Source for event pass-through
     const noneDataSource = this.api.addNoneDataSource('NoneDataSource');
 
-    // Mutation: fireEventByNode (None DataSource for pass-through)
-    noneDataSource.createResolver('FireEventByNodeResolver', {
+    // Function: fireEventByNode (main logic)
+    const fireEventByNodeFunction = new appsync.AppsyncFunction(this, 'FireEventByNodeFunction', {
+      name: 'fireEventByNode',
+      api: this.api,
+      dataSource: noneDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
+    });
+
+    // Pipeline Resolver: fireEventByNode (グループ存在確認 → イベント発火)
+    new appsync.Resolver(this, 'FireEventByNodePipelineResolver', {
+      api: this.api,
       typeName: 'Mutation',
       fieldName: 'fireEventByNode',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
+      pipelineConfig: [checkGroupExistsFunction, fireEventByNodeFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
     });
 
     // Resolvers for Phase 2-4: dissolveGroup with Lambda
