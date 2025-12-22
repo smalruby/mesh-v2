@@ -13,6 +13,7 @@ const state = {
   currentNodeId: null,
   selectedGroupId: null,
   sessionStartTime: null,
+  sessionTimerId: null,
   dataSubscriptionId: null,
   eventSubscriptionId: null,
   sensorData: {
@@ -111,6 +112,7 @@ function setupEventListeners() {
   document.getElementById('listGroupsBtn').addEventListener('click', handleListGroups);
   document.getElementById('joinGroupBtn').addEventListener('click', handleJoinGroup);
   document.getElementById('dissolveGroupBtn').addEventListener('click', handleDissolveGroup);
+  document.getElementById('disconnectBtn').addEventListener('click', handleDisconnect);
 
   // Events
   document.getElementById('sendEventBtn').addEventListener('click', handleSendEvent);
@@ -444,6 +446,81 @@ async function handleDissolveGroup() {
 }
 
 /**
+ * Handle disconnect
+ * Disconnects from the mesh network and cleans up subscriptions
+ */
+async function handleDisconnect() {
+  if (!state.connected) {
+    return;
+  }
+
+  if (!confirm('Are you sure you want to disconnect? You will leave the current group.')) {
+    return;
+  }
+
+  try {
+    // Check if current node is host
+    const isHost = state.currentGroup && state.currentGroup.hostId === state.currentNodeId;
+
+    if (isHost) {
+      // Host: dissolve the group
+      await state.client.dissolveGroup(
+        state.currentGroup.id,
+        state.currentNodeId,
+        state.currentGroup.domain
+      );
+      console.log('Group dissolved by disconnect');
+    }
+
+    // Unsubscribe from data updates
+    if (state.dataSubscriptionId) {
+      state.client.unsubscribe(state.dataSubscriptionId);
+      state.dataSubscriptionId = null;
+    }
+
+    // Unsubscribe from events
+    if (state.eventSubscriptionId) {
+      state.client.unsubscribe(state.eventSubscriptionId);
+      state.eventSubscriptionId = null;
+    }
+
+    // Stop session timer
+    if (state.sessionTimerId) {
+      clearInterval(state.sessionTimerId);
+      state.sessionTimerId = null;
+    }
+
+    // Clear state
+    state.currentGroup = null;
+    state.selectedGroupId = null;
+    state.connected = false;
+    state.currentNodeId = null;
+    state.currentDomain = null;
+    state.sessionStartTime = null;
+
+    // Reset session timer display
+    const timerEl = document.getElementById('sessionTimer');
+    timerEl.textContent = 'Session: --:--';
+    timerEl.classList.remove('warning');
+
+    // Clear other nodes display
+    displayOtherNodesData(null);
+
+    // Clear group list
+    document.getElementById('groupList').innerHTML =
+      '<p style="color: #999; text-align: center;">No groups available</p>';
+
+    showSuccess('groupSuccess', 'Disconnected successfully');
+    updateCurrentGroupUI();
+    updateUI();
+
+  } catch (error) {
+    showError('groupError', 'Failed to disconnect: ' + error.message);
+    console.error('Disconnect error:', error);
+  }
+}
+
+/**
  * Update current group UI
  */
 function updateCurrentGroupUI() {
@@ -662,7 +739,12 @@ function updateRateStatus() {
  * Start session timer (90 minute limit)
  */
 function startSessionTimer() {
-  setInterval(() => {
+  // Prevent multiple timers
+  if (state.sessionTimerId) {
+    clearInterval(state.sessionTimerId);
+  }
+
+  state.sessionTimerId = setInterval(() => {
     if (!state.sessionStartTime) return;
 
     const elapsed = Date.now() - state.sessionStartTime;
@@ -730,6 +812,14 @@ function updateUI() {
   } else {
     statusEl.textContent = 'Disconnected';
     statusEl.className = 'status disconnected';
+  }
+
+  // Show/hide disconnect button
+  const disconnectBtn = document.getElementById('disconnectBtn');
+  if (connected) {
+    disconnectBtn.style.display = 'block';
+  } else {
+    disconnectBtn.style.display = 'none';
   }
 
   // Enable/disable buttons
