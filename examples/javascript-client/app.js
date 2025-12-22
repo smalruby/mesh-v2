@@ -16,6 +16,7 @@ const state = {
   sessionTimerId: null,
   dataSubscriptionId: null,
   eventSubscriptionId: null,
+  dissolveSubscriptionId: null,
   sensorData: {
     temperature: 20,
     brightness: 50,
@@ -379,6 +380,13 @@ async function handleJoinGroup() {
       handleEventReceived
     );
 
+    // Subscribe to group dissolution
+    state.dissolveSubscriptionId = state.client.subscribeToGroupDissolve(
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      handleGroupDissolved
+    );
+
     showSuccess('groupSuccess', `Joined group: ${state.selectedGroup.name}`);
     updateCurrentGroupUI();
   } catch (error) {
@@ -690,6 +698,40 @@ function handleEventReceived(event) {
 
   // Show notification (optional)
   showSuccess('eventSuccess', `Event received: ${event.name} from ${event.firedByNodeId}`);
+}
+
+/**
+ * Handle group dissolution notification
+ */
+function handleGroupDissolved(dissolveData) {
+  console.log('Group has been dissolved:', dissolveData);
+
+  // Unsubscribe from all active subscriptions
+  if (state.dataSubscriptionId) {
+    state.client.unsubscribe(state.dataSubscriptionId);
+    state.dataSubscriptionId = null;
+  }
+
+  if (state.eventSubscriptionId) {
+    state.client.unsubscribe(state.eventSubscriptionId);
+    state.eventSubscriptionId = null;
+  }
+
+  if (state.dissolveSubscriptionId) {
+    state.client.unsubscribe(state.dissolveSubscriptionId);
+    state.dissolveSubscriptionId = null;
+  }
+
+  // Clear group state
+  state.currentGroup = null;
+  state.selectedGroupId = null;
+
+  // Clear UI
+  displayOtherNodesData(null);
+  updateCurrentGroupUI();
+
+  // Show notification
+  showError('groupError', `Group has been dissolved: ${dissolveData.message}`);
 }
 
 /**
