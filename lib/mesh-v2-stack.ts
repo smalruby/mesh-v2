@@ -239,7 +239,7 @@ export class MeshV2Stack extends cdk.Stack {
     // Lambda function for dissolveGroup
     const dissolveGroupLambda = new lambda.Function(this, 'DissolveGroupFunction', {
       functionName: `MeshV2-DissolveGroup${stageSuffix}`,
-      runtime: lambda.Runtime.RUBY_3_2,
+      runtime: lambda.Runtime.RUBY_3_4,
       handler: 'handlers/appsync_handler.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       environment: {
