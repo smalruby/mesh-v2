@@ -113,6 +113,14 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupsByDomain.js'))
     });
 
+    // Query: listGroupStatuses
+    dynamoDbDataSource.createResolver('ListGroupStatusesResolver', {
+      typeName: 'Query',
+      fieldName: 'listGroupStatuses',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupStatuses.js'))
+    });
+
     // Mutation: createGroup (Pipeline Resolver for idempotency)
     // Function 1: Check if group already exists for this hostId + domain
     const checkExistingGroupFunction = new appsync.AppsyncFunction(this, 'CheckExistingGroupFunction', {

@@ -1,205 +1,161 @@
 require "faye/websocket"
 require "eventmachine"
 require "json"
+require "securerandom"
 require "base64"
-require "uri"
 
-# AppSync Subscription Helper
-# AWS AppSyncのWebSocket Subscriptionをテストするためのヘルパー
+# AppSync WebSocket Subscription Helper
+# AppSyncのリアルタイムエンドポイントに接続してSubscriptionをテストするヘルパー
 class AppSyncSubscriptionHelper
-  attr_reader :messages, :errors
+  class SubscriptionError < StandardError; end
+  class TimeoutError < SubscriptionError; end
 
-  def initialize(api_url, api_key)
-    @api_url = api_url
+  attr_reader :endpoint, :api_key, :ws_endpoint
+
+  def initialize(endpoint, api_key)
+    @endpoint = endpoint
     @api_key = api_key
-    @messages = []
-    @errors = []
-    @ws = nil
-    @registered_subscriptions = {}
+    @ws_endpoint = convert_to_websocket_endpoint(endpoint)
+    @host = extract_host(endpoint)
   end
 
-  # WebSocket接続を確立
-  def connect
-    # AppSync WebSocket URL (HTTP → WSS)
-    ws_url = @api_url.gsub("https://", "wss://").gsub("/graphql", "/graphql/connect")
+  # Subscriptionを確立し、mutationを実行し、データ受信を待つ
+  # @param query [String] GraphQL subscription query
+  # @param variables [Hash] Subscription variables
+  # @param wait_time [Integer] Time to wait before executing block (seconds)
+  # @param timeout [Integer] Total timeout (seconds)
+  # @yield Block to execute after subscription is established (e.g., mutation)
+  # @return [Array<Hash>] All received subscription data
+  def subscribe_and_execute(query, variables = {}, wait_time: 2, timeout: 15, &block)
+    received_data = []
+    error = nil
+    subscription_id = SecureRandom.uuid
+    subscription_ready = false
+    block_executed = false
 
-    # AppSync接続用のヘッダー
-    headers = {
-      "host" => URI.parse(@api_url).host
-    }
+    EM.run do
+      # Timeout timer
+      timeout_timer = EM.add_timer(timeout) do
+        puts "[Timeout] No data received after #{timeout}s"
+        EM.stop
+      end
 
-    # WebSocket接続用のURLにAPI Keyを含める
-    connection_params = {
-      "header" => Base64.strict_encode64(JSON.generate({
-        "x-api-key" => @api_key,
-        "host" => URI.parse(@api_url).host
-      })),
-      "payload" => Base64.strict_encode64("{}")
-    }
+      # WebSocket connection
+      ws = create_websocket_connection
 
-    full_url = "#{ws_url}?#{URI.encode_www_form(connection_params)}"
+      ws.on :open do
+        puts "[Subscription] WebSocket connection established"
+        send_message(ws, type: "connection_init")
+      end
 
-    @ws = Faye::WebSocket::Client.new(full_url, nil, {headers: headers})
+      ws.on :message do |event|
+        message = JSON.parse(event.data)
+        msg_type = message["type"]
 
-    @ws.on :open do |event|
-      puts "[WebSocket] Connected to AppSync"
-      send_connection_init
+        case msg_type
+        when "connection_ack"
+          puts "[Subscription] Connection acknowledged"
+          # Start subscription
+          send_message(ws, {
+            id: subscription_id,
+            type: "start",
+            payload: {
+              data: JSON.generate({
+                query: query,
+                variables: variables
+              }),
+              extensions: {
+                authorization: {
+                  host: @host,
+                  "x-api-key": @api_key
+                }
+              }
+            }
+          })
+
+        when "start_ack"
+          puts "[Subscription] Subscription started, waiting #{wait_time}s before executing mutation..."
+          subscription_ready = true
+
+          # Wait before executing block
+          EM.add_timer(wait_time) do
+            unless block_executed
+              block_executed = true
+              begin
+                block.call if block_given?
+              rescue => e
+                error = e
+                puts "[Error] Mutation block failed: #{e.message}"
+              end
+            end
+          end
+
+        when "data"
+          data = message.dig("payload", "data")
+          if data
+            puts "[Subscription] Data received!"
+            received_data << data
+
+            # Stop after receiving data
+            EM.add_timer(1) do
+              EM.cancel_timer(timeout_timer) if timeout_timer
+              EM.stop
+            end
+          end
+
+        when "error"
+          error_msg = message["payload"]
+          puts "[Subscription] Error: #{error_msg}"
+          error = SubscriptionError.new("Subscription error: #{error_msg}")
+
+        when "ka"
+          # Keep-alive (silent)
+        end
+      end
+
+      ws.on :error do |event|
+        puts "[Subscription] WebSocket error: #{event.message}"
+        error = SubscriptionError.new("WebSocket error: #{event.message}")
+      end
+
+      ws.on :close do |event|
+        puts "[Subscription] Connection closed (received #{received_data.length} message(s))"
+        EM.cancel_timer(timeout_timer) if timeout_timer
+        EM.stop
+      end
     end
 
-    @ws.on :message do |event|
-      handle_message(event.data)
-    end
-
-    @ws.on :close do |event|
-      puts "[WebSocket] Connection closed: #{event.code} #{event.reason}"
-      @ws = nil
-    end
-
-    @ws.on :error do |event|
-      error_msg = "[WebSocket] Error: #{event.message}"
-      puts error_msg
-      @errors << error_msg
-    end
-  end
-
-  # Subscription登録
-  def subscribe(subscription_query, variables = {}, subscription_id = nil)
-    subscription_id ||= SecureRandom.uuid
-
-    message = {
-      "id" => subscription_id,
-      "type" => "start",
-      "payload" => {
-        "data" => JSON.generate({
-          "query" => subscription_query,
-          "variables" => variables
-        }),
-        "extensions" => {
-          "authorization" => {
-            "x-api-key" => @api_key,
-            "host" => URI.parse(@api_url).host
-          }
-        }
-      }
-    }
-
-    send_message(message)
-    @registered_subscriptions[subscription_id] = {query: subscription_query, variables: variables}
-    subscription_id
-  end
-
-  # Subscription登録解除
-  def unsubscribe(subscription_id)
-    message = {
-      "id" => subscription_id,
-      "type" => "stop"
-    }
-    send_message(message)
-    @registered_subscriptions.delete(subscription_id)
-  end
-
-  # 接続を閉じる
-  def close
-    if @ws
-      @ws.close
-      @ws = nil
-    end
-  end
-
-  # メッセージ受信を待つ（タイムアウト付き）
-  def wait_for_message(timeout: 5)
-    start_time = Time.now
-    initial_count = @messages.length
-
-    while Time.now - start_time < timeout
-      sleep 0.1
-      return @messages.last if @messages.length > initial_count
-    end
-
-    nil
-  end
-
-  # 複数メッセージを待つ
-  def wait_for_messages(count, timeout: 10)
-    start_time = Time.now
-    initial_count = @messages.length
-
-    while Time.now - start_time < timeout
-      sleep 0.1
-      return @messages.last(count) if @messages.length >= initial_count + count
-    end
-
-    begin
-      @messages.last(count)
-    rescue
-      []
-    end
+    raise error if error
+    received_data
   end
 
   private
 
-  def send_connection_init
-    message = {
-      "type" => "connection_init"
-    }
-    send_message(message)
+  def convert_to_websocket_endpoint(https_endpoint)
+    https_endpoint
+      .sub("https://", "wss://")
+      .sub(".appsync-api.", ".appsync-realtime-api.")
   end
 
-  def send_message(message)
-    if @ws
-      @ws.send(JSON.generate(message))
-      puts "[WebSocket] Sent: #{message["type"]} (id: #{message["id"]})"
-    else
-      puts "[WebSocket] Error: Not connected"
-    end
+  def extract_host(endpoint)
+    URI.parse(endpoint).host
   end
 
-  def handle_message(data)
-    message = JSON.parse(data)
-    puts "[WebSocket] Received: #{message["type"]} (id: #{message["id"]})"
+  def create_websocket_connection
+    # Encode authorization header for AppSync WebSocket
+    header = Base64.strict_encode64(JSON.generate({
+      "host" => @host,
+      "x-api-key" => @api_key
+    }))
+    payload = Base64.strict_encode64("{}")
 
-    case message["type"]
-    when "connection_ack"
-      puts "[WebSocket] Connection acknowledged"
-    when "start_ack"
-      puts "[WebSocket] Subscription started: #{message["id"]}"
-    when "data"
-      puts "[WebSocket] Data received: #{message["payload"]}"
-      @messages << message
-    when "error"
-      error_msg = "Subscription error: #{message["payload"]}"
-      puts "[WebSocket] #{error_msg}"
-      @errors << error_msg
-    when "complete"
-      puts "[WebSocket] Subscription completed: #{message["id"]}"
-    when "ka"
-      # Keep-alive message
-    else
-      puts "[WebSocket] Unknown message type: #{message["type"]}"
-    end
-  rescue JSON::ParserError => e
-    puts "[WebSocket] Failed to parse message: #{e.message}"
-    @errors << "Parse error: #{e.message}"
-  end
-end
+    # Build WebSocket URL with authentication
+    ws_url_with_auth = "#{@ws_endpoint}?header=#{header}&payload=#{payload}"
 
-# EventMachineを使ったSubscriptionテスト実行ヘルパー
-def run_subscription_test(timeout: 10, &block)
-  result = nil
-  error = nil
-
-  EM.run do
-    begin
-      result = block.call
-    rescue => e
-      error = e
-    end
-
-    EM.add_timer(timeout) do
-      EM.stop
-    end
+    Faye::WebSocket::Client.new(ws_url_with_auth, ["graphql-ws"])
   end
 
-  raise error if error
-  result
+  def send_message(ws, message)
+    ws.send(JSON.generate(message))
+  end
 end
