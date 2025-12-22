@@ -14,6 +14,7 @@ const state = {
   selectedGroupId: null,
   sessionStartTime: null,
   dataSubscriptionId: null,
+  eventSubscriptionId: null,
   sensorData: {
     temperature: 20,
     brightness: 50,
@@ -369,6 +370,13 @@ async function handleJoinGroup() {
       displayOtherNodesData
     );
 
+    // Subscribe to events in group
+    state.eventSubscriptionId = state.client.subscribeToEvents(
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      handleEventReceived
+    );
+
     showSuccess('groupSuccess', `Joined group: ${state.selectedGroup.name}`);
     updateCurrentGroupUI();
   } catch (error) {
@@ -410,6 +418,12 @@ async function handleDissolveGroup() {
     if (state.dataSubscriptionId) {
       state.client.unsubscribe(state.dataSubscriptionId);
       state.dataSubscriptionId = null;
+    }
+
+    // Unsubscribe from events
+    if (state.eventSubscriptionId) {
+      state.client.unsubscribe(state.eventSubscriptionId);
+      state.eventSubscriptionId = null;
     }
 
     state.currentGroup = null;
@@ -528,8 +542,8 @@ async function handleSendEvent() {
 
     console.log('Event sent:', result);
 
-    // Add to local history (using API result)
-    addEventToHistory(result);
+    // Note: Event will be added to history via subscription
+    // (avoids duplicate entries for self-sent events)
 
     showSuccess('eventSuccess', 'Event sent successfully');
 
@@ -586,6 +600,19 @@ function displayEventHistory() {
 function handleClearEvents() {
   state.eventHistory = [];
   displayEventHistory();
+}
+
+/**
+ * Handle event received from subscription
+ */
+function handleEventReceived(event) {
+  console.log('Event received from subscription:', event);
+
+  // Add to event history
+  addEventToHistory(event);
+
+  // Show notification (optional)
+  showSuccess('eventSuccess', `Event received: ${event.name} from ${event.firedByNodeId}`);
 }
 
 /**
