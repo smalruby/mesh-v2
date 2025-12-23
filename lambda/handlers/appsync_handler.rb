@@ -1,5 +1,6 @@
 require_relative "../use_cases/create_group"
 require_relative "../use_cases/dissolve_group"
+require_relative "../use_cases/leave_group"
 require_relative "../repositories/dynamodb_repository"
 require "aws-sdk-dynamodb"
 require "json"
@@ -16,6 +17,8 @@ def lambda_handler(event:, context:)
     handle_create_group(arguments)
   when "dissolveGroup"
     handle_dissolve_group(arguments)
+  when "leaveGroup"
+    handle_leave_group(arguments)
   else
     raise StandardError, "Unknown field: #{field_name}"
   end
@@ -57,6 +60,28 @@ def handle_dissolve_group(arguments)
   format_dissolve_group_response(result)
 end
 
+def handle_leave_group(arguments)
+  # DynamoDBクライアントとリポジトリの初期化
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV["AWS_REGION"] || "ap-northeast-1")
+  repository = DynamoDBRepository.new(dynamodb)
+
+  # ユースケースの実行
+  use_case = LeaveGroupUseCase.new(repository)
+  result = use_case.execute(
+    group_id: arguments["groupId"],
+    domain: arguments["domain"],
+    peer_id: arguments["nodeId"]
+  )
+
+  # エラーハンドリング
+  unless result[:success]
+    raise StandardError, result[:error]
+  end
+
+  # AppSync形式にフォーマット
+  format_leave_group_response(result)
+end
+
 def format_group_response(group)
   {
     id: group.id,
@@ -71,6 +96,15 @@ end
 def format_dissolve_group_response(result)
   {
     groupId: result[:groupId],
+    domain: result[:domain],
+    message: result[:message]
+  }
+end
+
+def format_leave_group_response(result)
+  {
+    peerId: result[:peer_id],
+    groupId: result[:group_id],
     domain: result[:domain],
     message: result[:message]
   }

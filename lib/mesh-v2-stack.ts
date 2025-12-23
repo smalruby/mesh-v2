@@ -263,6 +263,12 @@ export class MeshV2Stack extends cdk.Stack {
       fieldName: 'dissolveGroup',
     });
 
+    // Mutation: leaveGroup (Lambda resolver)
+    dissolveGroupDataSource.createResolver('LeaveGroupResolver', {
+      typeName: 'Mutation',
+      fieldName: 'leaveGroup',
+    });
+
     // Output API endpoint
     new cdk.CfnOutput(this, 'GraphQLApiEndpoint', {
       value: this.api.graphqlUrl,
