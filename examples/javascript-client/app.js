@@ -112,6 +112,7 @@ function setupEventListeners() {
   document.getElementById('createGroupBtn').addEventListener('click', handleCreateGroup);
   document.getElementById('listGroupsBtn').addEventListener('click', handleListGroups);
   document.getElementById('joinGroupBtn').addEventListener('click', handleJoinGroup);
+  document.getElementById('leaveGroupBtn').addEventListener('click', handleLeaveGroup);
   document.getElementById('dissolveGroupBtn').addEventListener('click', handleDissolveGroup);
   document.getElementById('disconnectBtn').addEventListener('click', handleDisconnect);
 
@@ -396,6 +397,59 @@ async function handleJoinGroup() {
 }
 
 /**
+ * Handle leave group
+ */
+async function handleLeaveGroup() {
+  if (!state.currentGroup) {
+    showError('groupError', 'Not in a group');
+    return;
+  }
+
+  try {
+    const result = await state.client.leaveGroup(
+      state.currentGroup.id,
+      state.currentNodeId,
+      state.currentGroup.domain
+    );
+
+    console.log('Left group:', result);
+
+    // Unsubscribe from data updates
+    if (state.dataSubscriptionId) {
+      state.client.unsubscribe(state.dataSubscriptionId);
+      state.dataSubscriptionId = null;
+    }
+
+    // Unsubscribe from events
+    if (state.eventSubscriptionId) {
+      state.client.unsubscribe(state.eventSubscriptionId);
+      state.eventSubscriptionId = null;
+    }
+
+    // Unsubscribe from dissolve notifications
+    if (state.dissolveSubscriptionId) {
+      state.client.unsubscribe(state.dissolveSubscriptionId);
+      state.dissolveSubscriptionId = null;
+    }
+
+    state.currentGroup = null;
+    state.selectedGroupId = null;
+
+    // Clear other nodes display
+    displayOtherNodesData(null);
+
+    showSuccess('groupSuccess', 'Left group successfully');
+    updateCurrentGroupUI();
+
+    // Refresh group list
+    await handleListGroups();
+  } catch (error) {
+    showError('groupError', 'Failed to leave group: ' + error.message);
+    console.error('Leave group error:', error);
+  }
+}
+
+/**
  * Handle dissolve group (host only)
  */
 async function handleDissolveGroup() {
@@ -478,6 +532,14 @@ async function handleDisconnect() {
         state.currentGroup.domain
       );
       console.log('Group dissolved by disconnect');
+    } else if (state.currentGroup) {
+      // Member: leave the group
+      await state.client.leaveGroup(
+        state.currentGroup.id,
+        state.currentNodeId,
+        state.currentGroup.domain
+      );
+      console.log('Left group by disconnect');
     }
 
     // Unsubscribe from data updates
@@ -872,6 +934,14 @@ function updateUI() {
   // Dissolve button only enabled when user is host
   const isHost = inGroup && state.currentGroup && state.currentGroup.hostId === state.currentNodeId;
   document.getElementById('dissolveGroupBtn').disabled = !isHost;
+
+  // Leave button shown when in group and not host
+  const leaveBtn = document.getElementById('leaveGroupBtn');
+  if (inGroup && !isHost) {
+    leaveBtn.style.display = 'inline-block';
+  } else {
+    leaveBtn.style.display = 'none';
+  }
 
   document.getElementById('sendEventBtn').disabled = !inGroup;
 

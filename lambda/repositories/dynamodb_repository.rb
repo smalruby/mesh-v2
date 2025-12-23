@@ -162,6 +162,25 @@ class DynamoDBRepository
     false
   end
 
+  # ピアのデータを削除（NodeStatus削除）
+  def delete_peer_data(group_id, domain, peer_id)
+    return false unless @dynamodb
+
+    # NodeStatusデータを削除
+    @dynamodb.delete_item(
+      table_name: @table_name,
+      key: {
+        "pk" => "DOMAIN##{domain}",
+        "sk" => "GROUP##{group_id}#NODE##{peer_id}#STATUS"
+      }
+    )
+
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
   private
 
   def item_to_group(item)

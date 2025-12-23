@@ -242,6 +242,30 @@ class MeshClient {
   }
 
   /**
+   * Leave a group
+   */
+  async leaveGroup(groupId, nodeId, domain) {
+    const query = `
+      mutation LeaveGroup($groupId: ID!, $nodeId: ID!, $domain: String!) {
+        leaveGroup(groupId: $groupId, nodeId: $nodeId, domain: $domain) {
+          peerId
+          groupId
+          domain
+          message
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      groupId,
+      nodeId,
+      domain: domain || this.domain
+    });
+
+    return data.leaveGroup;
+  }
+
+  /**
    * Dissolve a group (host only)
    */
   async dissolveGroup(groupId, hostId, domain) {
