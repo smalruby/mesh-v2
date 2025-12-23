@@ -35,7 +35,7 @@ RSpec.describe "Leave Group API", type: :request do
         nodeId: node_id,
         groupId: group_id,
         domain: domain,
-        data: [{ key: "temp", value: "25" }]
+        data: [{key: "temp", value: "25"}]
       })
 
       # データが存在することを確認
