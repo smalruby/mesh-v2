@@ -6,5 +6,6 @@ query GetGroup($groupId: ID!, $domain: String!) {
     name
     hostId
     createdAt
+    expiresAt
   }
 }

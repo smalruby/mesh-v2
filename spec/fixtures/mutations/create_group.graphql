@@ -6,5 +6,6 @@ mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!) {
     name
     hostId
     createdAt
+    expiresAt
   }
 }

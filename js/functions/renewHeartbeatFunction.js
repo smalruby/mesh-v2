@@ -1,10 +1,17 @@
-// renewHeartbeat Mutation Resolver
-// ホストの生存確認を行い、TTLを延長する
+// renewHeartbeat Pipeline Function
+// ホスト認証を行い、ハートビートを更新する
 
 import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
   const { groupId, domain, hostId } = ctx.args;
+  const group = ctx.stash.group;
+
+  // ホスト認証
+  if (group.hostId !== hostId) {
+    util.error('Only the host can renew the heartbeat', 'Unauthorized');
+  }
+
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
   const ttl = nowEpoch + 300; // 5分延長
 
@@ -15,16 +22,14 @@ export function request(ctx) {
       sk: `GROUP#${groupId}#METADATA`
     }),
     update: {
-      expression: 'SET heartbeatAt = :now, ttl = :ttl',
+      expression: 'SET #heartbeatAt = :now, #ttl = :ttl',
+      expressionNames: {
+        '#heartbeatAt': 'heartbeatAt',
+        '#ttl': 'ttl'
+      },
       expressionValues: util.dynamodb.toMapValues({
         ':now': nowEpoch,
         ':ttl': ttl
-      })
-    },
-    condition: {
-      expression: 'hostId = :hostId',
-      expressionValues: util.dynamodb.toMapValues({
-        ':hostId': hostId
       })
     }
   };
@@ -32,9 +37,6 @@ export function request(ctx) {
 
 export function response(ctx) {
   if (ctx.error) {
-    if (ctx.error.type === 'DynamoDB:ConditionalCheckFailedException') {
-      util.error('Only the host can renew the heartbeat or group not found', 'Unauthorized');
-    }
     util.error(ctx.error.message, ctx.error.type);
   }
 
