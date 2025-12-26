@@ -10,14 +10,14 @@ RSpec.describe CreateDomainUseCase do
     it "ソースIPをCRC32でハッシュ化して16進数で返す" do
       ip = "192.168.1.1"
       expected = Zlib.crc32(secret_key + ip).to_s(16)
-      
+
       result = use_case.execute(source_ip: ip)
       expect(result).to eq(expected)
     end
 
     it "source_ipがnilの場合は 'none' を使用してハッシュ化する" do
       expected = Zlib.crc32(secret_key + "none").to_s(16)
-      
+
       result = use_case.execute(source_ip: nil)
       expect(result).to eq(expected)
     end

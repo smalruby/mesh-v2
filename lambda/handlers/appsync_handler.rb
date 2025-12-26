@@ -90,7 +90,7 @@ def handle_create_domain(event)
   # そのため、X-Forwarded-For ヘッダーから取得を試みる
   headers = event.dig("request", "headers") || {}
   x_forwarded_for = headers["x-forwarded-for"]
-  
+
   source_ip = if x_forwarded_for
     # X-Forwarded-For は "client, proxy1, proxy2" 形式なので最初の要素を取得
     x_forwarded_for.split(",").first.strip
