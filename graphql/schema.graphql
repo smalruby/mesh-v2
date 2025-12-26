@@ -62,11 +62,10 @@ type LeaveGroupPayload {
 
 type Query {
   # Domain内のグループ一覧取得（スキャン機能）
-  # domain未指定時はリクエスト元グローバルIPを使用
-  listGroupsByDomain(domain: String): [Group!]!
+  listGroupsByDomain(domain: String!): [Group!]!
 
   # グループ取得
-  getGroup(groupId: ID!, domain: String): Group
+  getGroup(groupId: ID!, domain: String!): Group
 
   # NodeStatus取得
   getNodeStatus(nodeId: ID!): NodeStatus
@@ -81,12 +80,15 @@ type Query {
 # --- ミューテーション (Mutations) ---
 
 type Mutation {
+  # ドメイン管理
+  # リクエスト元のソースIPからドメインを生成する
+  createDomain: String!
+
   # グループ管理
-  # domain未指定時はリクエスト元グローバルIPを使用
   createGroup(
     name: String!
     hostId: ID!
-    domain: String
+    domain: String!
   ): Group!
 
   joinGroup(

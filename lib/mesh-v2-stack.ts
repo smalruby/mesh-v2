@@ -244,6 +244,7 @@ export class MeshV2Stack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       environment: {
         DYNAMODB_TABLE_NAME: this.table.tableName,
+        MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
       },
       timeout: cdk.Duration.seconds(30),
     });
@@ -261,6 +262,12 @@ export class MeshV2Stack extends cdk.Stack {
     dissolveGroupDataSource.createResolver('DissolveGroupResolver', {
       typeName: 'Mutation',
       fieldName: 'dissolveGroup',
+    });
+
+    // Mutation: createDomain (Lambda resolver)
+    dissolveGroupDataSource.createResolver('CreateDomainResolver', {
+      typeName: 'Mutation',
+      fieldName: 'createDomain',
     });
 
     // Mutation: leaveGroup (Lambda resolver)

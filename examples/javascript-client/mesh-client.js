@@ -67,6 +67,21 @@ class MeshClient {
   }
 
   /**
+   * Create a domain from source IP
+   */
+  async createDomain() {
+    const query = `
+      mutation CreateDomain {
+        createDomain
+      }
+    `;
+
+    const data = await this.execute(query);
+    this.domain = data.createDomain;
+    return data.createDomain;
+  }
+
+  /**
    * Create a new group
    */
   async createGroup(name, hostId, domain) {

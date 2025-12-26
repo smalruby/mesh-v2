@@ -6,21 +6,13 @@ import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const { hostId, domain } = ctx.args;
 
-  // Domain決定: 引数 > ソースIP
-  const actualDomain = domain || ctx.identity?.sourceIp?.[0];
-
-  // domainが取得できない場合はエラー
-  if (!actualDomain) {
-    util.error('Domain must be specified or source IP must be available', 'ValidationError');
-  }
-
   // 既存グループの検索
   return {
     operation: 'Query',
     query: {
       expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
       expressionValues: util.dynamodb.toMapValues({
-        ':pk': `DOMAIN#${actualDomain}`,
+        ':pk': `DOMAIN#${domain}`,
         ':sk_prefix': 'GROUP#'
       })
     },
