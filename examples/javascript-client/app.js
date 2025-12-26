@@ -631,6 +631,7 @@ function updateCurrentGroupUI() {
     <p><strong>Group:</strong> ${state.currentGroup.name}</p>
     <p><strong>Full ID:</strong> ${state.currentGroup.fullId || state.currentGroup.id}</p>
     <p><strong>Role:</strong> <span class="status ${isHost ? 'host' : 'member'}">${isHost ? 'Host' : 'Member'}</span></p>
+    ${state.currentGroup.expiresAt ? `<p><strong>Expires At:</strong> ${new Date(state.currentGroup.expiresAt).toLocaleString()}</p>` : ''}
   `;
 
   updateUI();
@@ -873,6 +874,7 @@ function startHeartbeat() {
   }
 
   console.log('Starting heartbeat timer...');
+  document.getElementById('heartbeatStatus').style.display = 'block';
 
   state.heartbeatTimerId = setInterval(async () => {
     if (!state.currentGroup || !state.connected) {
@@ -893,6 +895,7 @@ function startHeartbeat() {
         state.currentGroup.domain
       );
       console.log('Heartbeat renewed, expires at:', result.expiresAt);
+      document.getElementById('lastHeartbeatTime').textContent = new Date().toLocaleTimeString();
 
       // Update session timer with new expiration if possible
       if (result.expiresAt) {
@@ -916,6 +919,7 @@ function stopHeartbeat() {
     console.log('Stopping heartbeat timer');
     clearInterval(state.heartbeatTimerId);
     state.heartbeatTimerId = null;
+    document.getElementById('heartbeatStatus').style.display = 'none';
   }
 }
 
