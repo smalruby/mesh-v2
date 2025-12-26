@@ -26,7 +26,7 @@ RSpec.describe "Heartbeat API", type: :request do
       expect(response["errors"]).to be_nil
       expect(response["data"]["renewHeartbeat"]).not_to be_nil
       expect(response["data"]["renewHeartbeat"]["groupId"]).to eq(group_id)
-      
+
       # expiresAtが返ってくることを確認
       new_expires_at = response["data"]["renewHeartbeat"]["expiresAt"]
       expect(new_expires_at).to match_iso8601
@@ -75,12 +75,12 @@ RSpec.describe "Heartbeat API", type: :request do
 
       # 2. getGroup
       get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
-      get_res = execute_graphql(get_query, { groupId: group_id, domain: domain })
+      get_res = execute_graphql(get_query, {groupId: group_id, domain: domain})
       expect(get_res["data"]["getGroup"]["expiresAt"]).to match_iso8601
 
       # 3. listGroupsByDomain
       list_query = File.read(File.join(__dir__, "../fixtures/queries/list_groups_by_domain.graphql"))
-      list_res = execute_graphql(list_query, { domain: domain })
+      list_res = execute_graphql(list_query, {domain: domain})
       expect(list_res["data"]["listGroupsByDomain"][0]["expiresAt"]).to match_iso8601
     end
   end
