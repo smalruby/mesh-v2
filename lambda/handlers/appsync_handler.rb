@@ -1,6 +1,7 @@
 require_relative "../use_cases/create_group"
 require_relative "../use_cases/dissolve_group"
 require_relative "../use_cases/leave_group"
+require_relative "../use_cases/create_domain"
 require_relative "../repositories/dynamodb_repository"
 require "aws-sdk-dynamodb"
 require "json"
@@ -13,6 +14,8 @@ def lambda_handler(event:, context:)
   arguments = event["arguments"]
 
   case field_name
+  when "createDomain"
+    handle_create_domain(event)
   when "createGroup"
     handle_create_group(arguments)
   when "dissolveGroup"
@@ -80,6 +83,24 @@ def handle_leave_group(arguments)
 
   # AppSync形式にフォーマット
   format_leave_group_response(result)
+end
+
+def handle_create_domain(event)
+  # AppSync + API Key の場合、identity.sourceIp は空になることがある
+  # そのため、X-Forwarded-For ヘッダーから取得を試みる
+  headers = event.dig("request", "headers") || {}
+  x_forwarded_for = headers["x-forwarded-for"]
+
+  source_ip = if x_forwarded_for
+    # X-Forwarded-For は "client, proxy1, proxy2" 形式なので最初の要素を取得
+    x_forwarded_for.split(",").first.strip
+  else
+    # fallback: identity.sourceIp (IAM認証などでは設定される)
+    event.dig("identity", "sourceIp")&.first
+  end
+
+  use_case = CreateDomainUseCase.new
+  use_case.execute(source_ip: source_ip)
 end
 
 def format_group_response(group)

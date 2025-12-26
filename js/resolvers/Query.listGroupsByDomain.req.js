@@ -4,9 +4,7 @@
 import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
-  // Domain決定: 引数 > ソースIP
-  const sourceIp = ctx.identity.sourceIp[0];
-  const domain = ctx.args.domain || sourceIp;
+  const { domain } = ctx.args;
 
   return {
     operation: 'Query',

@@ -180,6 +180,13 @@ async function handleConnect() {
     // Generate node ID
     state.currentNodeId = 'node-' + Math.random().toString(36).substr(2, 9);
 
+    let actualDomain = domain;
+    if (!actualDomain) {
+      console.log('No domain specified, calling createDomain...');
+      actualDomain = await state.client.createDomain();
+      document.getElementById('domain').value = actualDomain;
+    }
+
     // Mark as connected
     state.connected = true;
     state.sessionStartTime = Date.now();
@@ -189,12 +196,12 @@ async function handleConnect() {
 
     // Update UI
     updateUI();
-    document.getElementById('currentDomain').textContent = domain || 'auto-detect (sourceIp)';
+    document.getElementById('currentDomain').textContent = actualDomain;
     document.getElementById('currentNodeId').textContent = state.currentNodeId;
 
     showSuccess('configError', 'Connected to Mesh v2!');
 
-    console.log('Connected:', { endpoint, domain, nodeId: state.currentNodeId });
+    console.log('Connected:', { endpoint, domain: actualDomain, nodeId: state.currentNodeId });
   } catch (error) {
     showError('configError', 'Connection failed: ' + error.message);
     console.error('Connection error:', error);

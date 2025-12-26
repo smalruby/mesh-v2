@@ -7,6 +7,8 @@ A vanilla JavaScript prototype demonstrating Mesh v2 client integration with AWS
 This prototype serves as a reference implementation for integrating Mesh v2 functionality into Smalruby3-gui. It demonstrates:
 
 - Domain-based group management (up to 256 characters)
+- Mandatory domain for all operations
+- Domain generation from source IP via `createDomain` mutation
 - Real-time sensor data transmission with rate limiting
 - Event system with pub/sub capabilities
 - 90-minute session management
@@ -54,10 +56,10 @@ This will:
 ### 4. Open in Browser
 
 ```bash
-# Without domain (uses auto-detected sourceIp)
+# Domain will be auto-generated from your IP upon connection if not specified
 open http://localhost:3000
 
-# With custom domain
+# Or with custom domain
 open "http://localhost:3000?mesh=my-test-domain"
 ```
 
@@ -71,7 +73,8 @@ http://localhost:3000?mesh=custom-domain
 ```
 
 - Domain can be up to 256 characters
-- If no domain specified, backend uses sourceIp auto-detection
+- Domain is required for all Mesh operations
+- If no domain specified, the client calls `createDomain` to generate one from your source IP
 - Domain persists in UI for the session
 
 ### 2. Group Operations
