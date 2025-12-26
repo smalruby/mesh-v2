@@ -38,6 +38,7 @@ export class MeshV2Stack extends cdk.Stack {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: false, // Disable for cost optimization in dev
       },
+      timeToLiveAttribute: 'ttl',
     });
 
     // DynamoDB Tableにタグ付与
@@ -164,6 +165,14 @@ export class MeshV2Stack extends cdk.Stack {
       fieldName: 'joinGroup',
       runtime: appsync.FunctionRuntime.JS_1_0_0,
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.joinGroup.js'))
+    });
+
+    // Mutation: renewHeartbeat
+    dynamoDbDataSource.createResolver('RenewHeartbeatResolver', {
+      typeName: 'Mutation',
+      fieldName: 'renewHeartbeat',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.renewHeartbeat.js'))
     });
 
     // Resolvers for Phase 2-2: High-Frequency Mutations

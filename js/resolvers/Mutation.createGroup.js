@@ -15,6 +15,9 @@ export function request(ctx) {
   const groupId = util.autoId();
   const fullId = `${groupId}@${domain}`;
   const now = util.time.nowISO8601();
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const expiresAt = util.time.nowISO8601(util.time.nowEpochMilliSeconds() + 90 * 60 * 1000);
+  const ttl = nowEpoch + 300; // 5分間
 
   return {
     operation: 'PutItem',
@@ -29,6 +32,9 @@ export function request(ctx) {
       name: name,
       hostId: hostId,
       createdAt: now,
+      expiresAt: expiresAt,
+      heartbeatAt: nowEpoch,
+      ttl: ttl,
       // GSI用（groupId -> domain の逆引き検索）
       gsi_pk: `GROUP#${groupId}`,
       gsi_sk: `DOMAIN#${domain}`
@@ -48,6 +54,7 @@ export function response(ctx) {
     fullId: ctx.result.fullId,
     name: ctx.result.name,
     hostId: ctx.result.hostId,
-    createdAt: ctx.result.createdAt
+    createdAt: ctx.result.createdAt,
+    expiresAt: ctx.result.expiresAt
   };
 }

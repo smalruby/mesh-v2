@@ -14,6 +14,7 @@ const state = {
   selectedGroupId: null,
   sessionStartTime: null,
   sessionTimerId: null,
+  heartbeatTimerId: null,
   dataSubscriptionId: null,
   eventSubscriptionId: null,
   dissolveSubscriptionId: null,
@@ -254,6 +255,9 @@ async function handleCreateGroup() {
       displayOtherNodesData
     );
 
+    // Start heartbeat for host
+    startHeartbeat();
+
     showSuccess('groupSuccess', `Group created: ${group.fullId}`);
     updateCurrentGroupUI();
 
@@ -299,9 +303,11 @@ function displayGroupList(groups) {
          data-group-id="${group.id}"
          data-group-name="${group.name}"
          data-group-domain="${group.domain}"
-         data-host-id="${group.hostId}">
+         data-host-id="${group.hostId}"
+         data-expires-at="${group.expiresAt || ''}">
       <strong>${group.name}</strong><br>
       <small>ID: ${group.id} | Host: ${group.hostId}</small>
+      ${group.expiresAt ? `<br><small style="color: #666;">Expires: ${new Date(group.expiresAt).toLocaleTimeString()}</small>` : ''}
     </div>
   `).join('');
 
@@ -312,7 +318,8 @@ function displayGroupList(groups) {
       const groupName = item.dataset.groupName;
       const domain = item.dataset.groupDomain;
       const hostId = item.dataset.hostId;
-      selectGroup(groupId, groupName, domain, hostId);
+      const expiresAt = item.dataset.expiresAt;
+      selectGroup(groupId, groupName, domain, hostId, expiresAt);
     });
   });
 }
@@ -320,9 +327,9 @@ function displayGroupList(groups) {
 /**
  * Select a group from the list
  */
-function selectGroup(groupId, groupName, domain, hostId) {
+function selectGroup(groupId, groupName, domain, hostId, expiresAt) {
   state.selectedGroupId = groupId;
-  state.selectedGroup = { id: groupId, name: groupName, domain, hostId };
+  state.selectedGroup = { id: groupId, name: groupName, domain, hostId, expiresAt };
 
   // Update UI - remove selected from all, add to clicked item
   document.querySelectorAll('.group-item').forEach(item => {
@@ -395,6 +402,9 @@ async function handleJoinGroup() {
       handleGroupDissolved
     );
 
+    // Stop heartbeat if it was running (e.g. from a previously created group)
+    stopHeartbeat();
+
     showSuccess('groupSuccess', `Joined group: ${state.selectedGroup.name}`);
     updateCurrentGroupUI();
   } catch (error) {
@@ -438,6 +448,8 @@ async function handleLeaveGroup() {
       state.client.unsubscribe(state.dissolveSubscriptionId);
       state.dissolveSubscriptionId = null;
     }
+
+    stopHeartbeat();
 
     state.currentGroup = null;
     state.selectedGroupId = null;
@@ -496,6 +508,8 @@ async function handleDissolveGroup() {
       state.client.unsubscribe(state.eventSubscriptionId);
       state.eventSubscriptionId = null;
     }
+
+    stopHeartbeat();
 
     state.currentGroup = null;
     state.selectedGroupId = null;
@@ -566,6 +580,8 @@ async function handleDisconnect() {
       clearInterval(state.sessionTimerId);
       state.sessionTimerId = null;
     }
+
+    stopHeartbeat();
 
     // Clear state
     state.currentGroup = null;
@@ -786,16 +802,17 @@ function handleGroupDissolved(dissolveData) {
     state.eventSubscriptionId = null;
   }
 
-  if (state.dissolveSubscriptionId) {
-    state.client.unsubscribe(state.dissolveSubscriptionId);
-    state.dissolveSubscriptionId = null;
-  }
-
-  // Clear group state
-  state.currentGroup = null;
-  state.selectedGroupId = null;
-
-  // Clear UI
+      if (state.dissolveSubscriptionId) {
+        state.client.unsubscribe(state.dissolveSubscriptionId);
+        state.dissolveSubscriptionId = null;
+      }
+  
+      stopHeartbeat();
+  
+      // Clear group state
+      state.currentGroup = null;
+      state.selectedGroupId = null;
+    // Clear UI
   displayOtherNodesData(null);
   updateCurrentGroupUI();
 
@@ -847,7 +864,65 @@ function updateRateStatus() {
 }
 
 /**
- * Start session timer (90 minute limit)
+ * Start heartbeat timer (host only)
+ * Renews the group heartbeat every 1 minute
+ */
+function startHeartbeat() {
+  if (state.heartbeatTimerId) {
+    clearInterval(state.heartbeatTimerId);
+  }
+
+  console.log('Starting heartbeat timer...');
+
+  state.heartbeatTimerId = setInterval(async () => {
+    if (!state.currentGroup || !state.connected) {
+      stopHeartbeat();
+      return;
+    }
+
+    const isHost = state.currentGroup.hostId === state.currentNodeId;
+    if (!isHost) {
+      stopHeartbeat();
+      return;
+    }
+
+    try {
+      const result = await state.client.renewHeartbeat(
+        state.currentGroup.id,
+        state.currentNodeId,
+        state.currentGroup.domain
+      );
+      console.log('Heartbeat renewed, expires at:', result.expiresAt);
+
+      // Update session timer with new expiration if possible
+      if (result.expiresAt) {
+        state.currentGroup.expiresAt = result.expiresAt;
+      }
+    } catch (error) {
+      console.error('Heartbeat renewal failed:', error);
+      // If it's a "GroupNotFound" or similar, we might have been disconnected
+      if (error.message.includes('not found') || error.message.includes('expired')) {
+        handleGroupDissolved({ message: 'Session expired or group lost' });
+      }
+    }
+  }, 60000); // Every 60 seconds
+}
+
+/**
+ * Stop heartbeat timer
+ */
+function stopHeartbeat() {
+  if (state.heartbeatTimerId) {
+    console.log('Stopping heartbeat timer');
+    clearInterval(state.heartbeatTimerId);
+    state.heartbeatTimerId = null;
+  }
+}
+
+/**
+ * Start session timer
+ * If in a group, uses expiresAt from the group.
+ * Otherwise uses a default 90 minute limit from connection.
  */
 function startSessionTimer() {
   // Prevent multiple timers
@@ -856,10 +931,19 @@ function startSessionTimer() {
   }
 
   state.sessionTimerId = setInterval(() => {
-    if (!state.sessionStartTime) return;
+    let remaining;
 
-    const elapsed = Date.now() - state.sessionStartTime;
-    const remaining = (90 * 60 * 1000) - elapsed; // 90 minutes in ms
+    if (state.currentGroup && state.currentGroup.expiresAt) {
+      // Use expiration from group (ISO string)
+      const expiresAt = new Date(state.currentGroup.expiresAt).getTime();
+      remaining = expiresAt - Date.now();
+    } else if (state.sessionStartTime) {
+      // Fallback to connection-based timer
+      const elapsed = Date.now() - state.sessionStartTime;
+      remaining = (90 * 60 * 1000) - elapsed;
+    } else {
+      return;
+    }
 
     if (remaining <= 0) {
       handleSessionTimeout();
@@ -875,6 +959,8 @@ function startSessionTimer() {
     // Warning at 5 minutes remaining
     if (remaining <= 5 * 60 * 1000) {
       timerEl.classList.add('warning');
+    } else {
+      timerEl.classList.remove('warning');
     }
   }, 1000);
 }
@@ -883,7 +969,7 @@ function startSessionTimer() {
  * Handle session timeout
  */
 function handleSessionTimeout() {
-  alert('Session timeout (90 minutes). Please reconnect.');
+  alert('Session timeout. Please reconnect.');
 
   // Dissolve group if host, otherwise just clear state
   if (state.currentGroup) {
@@ -896,6 +982,9 @@ function handleSessionTimeout() {
       state.currentGroup = null;
     }
   }
+
+  // Stop heartbeat
+  stopHeartbeat();
 
   // Disconnect
   if (state.client) {
