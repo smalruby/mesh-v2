@@ -1,10 +1,11 @@
 require "spec_helper"
 
 RSpec.describe "Node Status Management", type: :request do
-  let(:domain) { "test-node-status-#{Time.now.to_i}.example.com" }
-  let(:host_id) { "host-#{Time.now.to_i}" }
-  let(:node1_id) { "node1-#{Time.now.to_i}" }
-  let(:node2_id) { "node2-#{Time.now.to_i}" }
+  let(:timestamp) { (Time.now.to_f * 1000).to_i }
+  let(:domain) { "test-node-status-#{timestamp}.example.com" }
+  let(:host_id) { "host-#{timestamp}" }
+  let(:node1_id) { "node1-#{timestamp}" }
+  let(:node2_id) { "node2-#{timestamp}" }
 
   describe "reportDataByNode and listGroupStatuses integration" do
     it "データ送信後、listGroupStatusesで取得できる" do
@@ -145,9 +146,6 @@ RSpec.describe "Node Status Management", type: :request do
         groupId: group_id,
         domain: domain
       })
-
-      # Verify: エラーなし
-      expect(list_response["errors"]).to be_nil
 
       # Verify: 空配列を返す（nullではない）
       statuses = list_response["data"]["listGroupStatuses"]

@@ -130,6 +130,47 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupStatuses.js'))
     });
 
+    // Query: getNodeStatus (Pipeline Resolver for better reliability)
+    const findNodeMetadataFunction = new appsync.AppsyncFunction(this, 'FindNodeMetadataFunction', {
+      name: 'findNodeMetadata',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/findNodeMetadata.js'))
+    });
+
+    const fetchNodeStatusFunction = new appsync.AppsyncFunction(this, 'FetchNodeStatusFunction', {
+      name: 'fetchNodeStatus',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/fetchNodeStatus.js'))
+    });
+
+    new appsync.Resolver(this, 'GetNodeStatusResolver', {
+      api: this.api,
+      typeName: 'Query',
+      fieldName: 'getNodeStatus',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      pipelineConfig: [findNodeMetadataFunction, fetchNodeStatusFunction],
+      code: appsync.Code.fromInline(`
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
+    });
+
+    // Query: listNodesInGroup
+    dynamoDbDataSource.createResolver('ListNodesInGroupResolver', {
+      typeName: 'Query',
+      fieldName: 'listNodesInGroup',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listNodesInGroup.js'))
+    });
+
     // Mutation: createGroup (Pipeline Resolver for idempotency)
     // Function 1: Check if group already exists for this hostId + domain
     const checkExistingGroupFunction = new appsync.AppsyncFunction(this, 'CheckExistingGroupFunction', {

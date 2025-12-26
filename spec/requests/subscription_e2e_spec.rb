@@ -164,4 +164,55 @@ RSpec.describe "Subscription E2E Test", type: :request do
       puts "✓ Event subscription test passed!"
     end
   end
+
+  describe "dissolveGroup mutation triggers onGroupDissolve subscription" do
+    it "グループ解散時に購読者に通知が届く" do
+      # Setup
+      group = create_test_group("Dissolve E2E Test", host_id, domain)
+      group_id = group["id"]
+      join_test_node(group_id, domain, node_id)
+
+      puts "\n[Test] Testing onGroupDissolve subscription..."
+
+      subscription_query = <<~GRAPHQL
+        subscription OnGroupDissolve($groupId: ID!, $domain: String!) {
+          onGroupDissolve(groupId: $groupId, domain: $domain) {
+            groupId
+            domain
+            message
+          }
+        }
+      GRAPHQL
+
+      mutation_query = File.read(File.join(__dir__, "../fixtures/mutations/dissolve_group.graphql"))
+
+      received_data = subscription_helper.subscribe_and_execute(
+        subscription_query,
+        {groupId: group_id, domain: domain},
+        wait_time: 2,
+        timeout: 15
+      ) do
+        puts "[Test] Dissolving group..."
+
+        response = execute_graphql(mutation_query, {
+          groupId: group_id,
+          domain: domain,
+          hostId: host_id
+        })
+
+        expect(response["errors"]).to be_nil
+        puts "[Test] Group dissolved successfully"
+      end
+
+      # Verify
+      expect(received_data).not_to be_empty
+      dissolve_data = received_data.first["onGroupDissolve"]
+      expect(dissolve_data).not_to be_nil
+      expect(dissolve_data["groupId"]).to eq(group_id)
+      expect(dissolve_data["domain"]).to eq(domain)
+      expect(dissolve_data["message"]).to include("dissolved")
+
+      puts "✓ Dissolve subscription test passed!"
+    end
+  end
 end
