@@ -26,8 +26,8 @@ export function request(ctx) {
       data: sensorDataList,
       timestamp: now,
       // GSI用属性
-      gsi_pk: `GROUP#${groupId}@${domain}`,
-      gsi_sk: `NODE#${nodeId}`
+      gsi_pk: `NODE#${nodeId}`,
+      gsi_sk: 'STATUS'
     }),
     // 環境変数からテーブル名を取得
     // Note: AppSyncのPutItemではtableプロパティは不要（DataSourceで指定済み）

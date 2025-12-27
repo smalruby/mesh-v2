@@ -94,6 +94,7 @@ class MeshClient {
           name
           hostId
           createdAt
+          expiresAt
         }
       }
     `;
@@ -105,6 +106,27 @@ class MeshClient {
     });
 
     return data.createGroup;
+  }
+
+  /**
+   * Renew heartbeat (host only)
+   */
+  async renewHeartbeat(groupId, hostId, domain) {
+    const query = `
+      mutation RenewHeartbeat($groupId: ID!, $hostId: ID!, $domain: String!) {
+        renewHeartbeat(groupId: $groupId, hostId: $hostId, domain: $domain) {
+          expiresAt
+        }
+      }
+    `;
+
+    const data = await this.execute(query, {
+      groupId,
+      hostId,
+      domain: domain || this.domain
+    });
+
+    return data.renewHeartbeat;
   }
 
   /**
@@ -120,6 +142,7 @@ class MeshClient {
           name
           hostId
           createdAt
+          expiresAt
         }
       }
     `;
@@ -171,6 +194,7 @@ class MeshClient {
           name
           hostId
           createdAt
+          expiresAt
         }
       }
     `;

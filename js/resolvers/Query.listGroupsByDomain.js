@@ -5,6 +5,8 @@ import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
   const { domain } = ctx.args;
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const threshold = nowEpoch - 300; // 5分前
 
   return {
     operation: 'Query',
@@ -13,6 +15,12 @@ export function request(ctx) {
       expressionValues: util.dynamodb.toMapValues({
         ':pk': `DOMAIN#${domain}`,
         ':sk_prefix': 'GROUP#'
+      })
+    },
+    filter: {
+      expression: 'heartbeatAt > :threshold',
+      expressionValues: util.dynamodb.toMapValues({
+        ':threshold': threshold
       })
     }
   };
@@ -33,6 +41,7 @@ export function response(ctx) {
       fullId: item.fullId,
       name: item.name,
       hostId: item.hostId,
-      createdAt: item.createdAt
+      createdAt: item.createdAt,
+      expiresAt: item.expiresAt
     }));
 }

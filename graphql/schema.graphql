@@ -19,6 +19,7 @@ type Group {
   name: String!
   hostId: ID!
   createdAt: AWSDateTime!
+  expiresAt: AWSDateTime!
 }
 
 type Node {
@@ -49,6 +50,12 @@ type GroupDissolvePayload {
   groupId: ID!
   domain: String!
   message: String!
+}
+
+type HeartbeatPayload {
+  groupId: ID!
+  domain: String!
+  expiresAt: AWSDateTime!
 }
 
 type LeaveGroupPayload {
@@ -109,6 +116,13 @@ type Mutation {
     domain: String!
     hostId: ID!
   ): GroupDissolvePayload
+
+  # ハートビート更新
+  renewHeartbeat(
+    groupId: ID!
+    domain: String!
+    hostId: ID!
+  ): HeartbeatPayload!
 
   # データ通信
   # Note: nullableにすることでSubscription型と一致させる
