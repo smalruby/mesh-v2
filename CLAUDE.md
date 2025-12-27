@@ -92,6 +92,7 @@ Mesh v2 uses environment variables for configuration, allowing different setting
 | `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | Host group TTL in seconds (5× interval) |
 | `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | Member heartbeat interval in seconds |
 | `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | Member node TTL in seconds (5× interval) |
+| `MESH_MAX_CONNECTION_TIME_MINUTES` | `10` | `50` | Maximum connection time for a group (minutes) |
 
 ### Setup for Local Development
 

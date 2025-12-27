@@ -70,6 +70,9 @@ export class MeshV2Stack extends cdk.Stack {
       description: 'DynamoDB table ARN for Mesh v2',
     });
 
+    // Environment variables defaults based on stage
+    const defaultMaxConnTime = stage === 'prod' ? '50' : '10';
+
     // AppSync GraphQL API for Mesh v2
     this.api = new appsync.GraphqlApi(this, 'MeshV2Api', {
       name: `MeshV2Api${stageSuffix}`,
@@ -88,6 +91,7 @@ export class MeshV2Stack extends cdk.Stack {
         MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
         MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
         MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
+        MESH_MAX_CONNECTION_TIME_MINUTES: process.env.MESH_MAX_CONNECTION_TIME_MINUTES || defaultMaxConnTime,
       },
       xrayEnabled: true,
       logConfig: {
@@ -356,6 +360,7 @@ export class MeshV2Stack extends cdk.Stack {
         MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
         MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
         MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
+        MESH_MAX_CONNECTION_TIME_MINUTES: process.env.MESH_MAX_CONNECTION_TIME_MINUTES || defaultMaxConnTime,
       },
       timeout: cdk.Duration.seconds(30),
     });
