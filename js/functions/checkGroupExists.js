@@ -18,9 +18,9 @@ export function request(ctx) {
 
 export function response(ctx) {
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const threshold = nowEpoch - 300; // 5分前
+  const threshold = nowEpoch - 60; // 1分前
 
-  // グループが存在しない、またはハートビートが5分以上途切れている場合はエラー
+  // グループが存在しない、またはハートビートが1分以上途切れている場合はエラー
   if (!ctx.result || (ctx.result.heartbeatAt && ctx.result.heartbeatAt < threshold)) {
     util.error(
       `Group ${ctx.args.groupId}@${ctx.args.domain} does not exist or has been dissolved`,

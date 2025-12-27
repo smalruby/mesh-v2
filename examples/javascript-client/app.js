@@ -364,7 +364,13 @@ async function handleJoinGroup() {
 
     console.log('Joined group:', result);
 
-    state.currentGroup = state.selectedGroup;
+    // Fetch fresh group info from server to get accurate expiresAt
+    const group = await state.client.getGroup(
+      state.selectedGroup.id,
+      state.selectedGroup.domain
+    );
+
+    state.currentGroup = group;
 
     // Initialize sensor data for this node
     // This immediately shares current sensor state with other group members
@@ -866,7 +872,7 @@ function updateRateStatus() {
 
 /**
  * Start heartbeat timer (host only)
- * Renews the group heartbeat every 1 minute
+ * Renews the group heartbeat every 15 seconds
  */
 function startHeartbeat() {
   if (state.heartbeatTimerId) {
@@ -908,7 +914,7 @@ function startHeartbeat() {
         handleGroupDissolved({ message: 'Session expired or group lost' });
       }
     }
-  }, 60000); // Every 60 seconds
+  }, 15000); // Every 15 seconds
 }
 
 /**
@@ -926,7 +932,7 @@ function stopHeartbeat() {
 /**
  * Start session timer
  * If in a group, uses expiresAt from the group.
- * Otherwise uses a default 90 minute limit from connection.
+ * Otherwise uses a default 50 minute limit from connection.
  */
 function startSessionTimer() {
   // Prevent multiple timers
@@ -944,7 +950,7 @@ function startSessionTimer() {
     } else if (state.sessionStartTime) {
       // Fallback to connection-based timer
       const elapsed = Date.now() - state.sessionStartTime;
-      remaining = (90 * 60 * 1000) - elapsed;
+      remaining = (50 * 60 * 1000) - elapsed;
     } else {
       return;
     }
