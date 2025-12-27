@@ -16,7 +16,7 @@ export function request(ctx) {
   const fullId = `${groupId}@${domain}`;
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const maxConnTimeMinutes = parseInt(ctx.env.MESH_MAX_CONNECTION_TIME_MINUTES || '50', 10);
+  const maxConnTimeMinutes = +(ctx.env.MESH_MAX_CONNECTION_TIME_MINUTES || '50');
   const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + maxConnTimeMinutes * 60 * 1000);
   const ttl = nowEpoch + 60; // 1分間
 
