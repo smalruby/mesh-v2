@@ -41,10 +41,14 @@ export function response(ctx) {
     util.error(ctx.error.message, ctx.error.type);
   }
 
+  const { groupId, domain } = ctx.args;
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+
   return {
-    groupId: ctx.result.id,
-    domain: ctx.result.domain,
-    expiresAt: ctx.result.expiresAt,
+    groupId: groupId,
+    domain: domain,
+    expiresAt: util.time.epochMilliSecondsToISO8601((nowEpoch + ttlSeconds) * 1000),
     heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30')
   };
 }
