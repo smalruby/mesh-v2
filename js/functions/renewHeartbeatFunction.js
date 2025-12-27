@@ -13,7 +13,7 @@ export function request(ctx) {
   }
 
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const ttl = nowEpoch + 300; // 5分延長
+  const ttl = nowEpoch + 60; // 1分延長
 
   return {
     operation: 'UpdateItem',

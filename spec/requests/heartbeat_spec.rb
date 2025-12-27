@@ -30,6 +30,12 @@ RSpec.describe "Heartbeat API", type: :request do
       # expiresAtが返ってくることを確認
       new_expires_at = response["data"]["renewHeartbeat"]["expiresAt"]
       expect(new_expires_at).to match_iso8601
+
+      # 50分（3000秒）後であることを確認（±1分の誤差を許容）
+      expires_time = DateTime.iso8601(new_expires_at).to_time
+      now_time = Time.now
+      diff_seconds = expires_time - now_time
+      expect(diff_seconds).to be_within(60).of(50 * 60)
     end
 
     it "ホスト以外のノードがハートビートを更新しようとするとエラー" do

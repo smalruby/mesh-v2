@@ -16,8 +16,8 @@ export function request(ctx) {
   const fullId = `${groupId}@${domain}`;
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const expiresAt = util.time.nowISO8601(util.time.nowEpochMilliSeconds() + 90 * 60 * 1000);
-  const ttl = nowEpoch + 300; // 5分間
+  const expiresAt = util.time.nowISO8601(util.time.nowEpochMilliSeconds() + 50 * 60 * 1000);
+  const ttl = nowEpoch + 60; // 1分間
 
   return {
     operation: 'PutItem',
