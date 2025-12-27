@@ -13,7 +13,8 @@ export function request(ctx) {
   }
 
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const ttl = nowEpoch + 60; // 1分延長
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const ttl = nowEpoch + ttlSeconds;
 
   return {
     operation: 'UpdateItem',
@@ -43,6 +44,7 @@ export function response(ctx) {
   return {
     groupId: ctx.result.id,
     domain: ctx.result.domain,
-    expiresAt: ctx.result.expiresAt
+    expiresAt: ctx.result.expiresAt,
+    heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30')
   };
 }
