@@ -71,7 +71,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
         expect(response["errors"]).not_to be_nil
-        expect(response["errors"][0]["message"]).to include("does not exist")
+        expect(response["errors"][0]["message"]).to include("not found")
         expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
       end
     end
@@ -105,7 +105,7 @@ RSpec.describe "Group Existence Validation", type: :request do
 
         # エラーレスポンス検証
         expect(report_response["errors"]).not_to be_nil
-        expect(report_response["errors"][0]["message"]).to include("does not exist")
+        expect(report_response["errors"][0]["message"]).to include("not found")
       end
     end
   end
@@ -125,7 +125,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
         expect(response["errors"]).not_to be_nil
-        expect(response["errors"][0]["message"]).to include("does not exist")
+        expect(response["errors"][0]["message"]).to include("not found")
         expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
       end
     end
@@ -158,7 +158,7 @@ RSpec.describe "Group Existence Validation", type: :request do
 
         # エラーレスポンス検証
         expect(fire_response["errors"]).not_to be_nil
-        expect(fire_response["errors"][0]["message"]).to include("does not exist")
+        expect(fire_response["errors"][0]["message"]).to include("not found")
       end
     end
   end
@@ -202,7 +202,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         data: [{key: "test", value: "value"}]
       })
       expect(report_response["errors"]).not_to be_nil
-      expect(report_response["errors"][0]["message"]).to include("does not exist")
+      expect(report_response["errors"][0]["message"]).to include("not found")
 
       # イベント発火を試みる（エラーになるべき）
       fire_query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
@@ -214,7 +214,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         payload: nil
       })
       expect(fire_response["errors"]).not_to be_nil
-      expect(fire_response["errors"][0]["message"]).to include("does not exist")
+      expect(fire_response["errors"][0]["message"]).to include("not found")
     end
   end
 end

@@ -23,7 +23,7 @@ export function response(ctx) {
   // グループが存在しない、またはハートビートが1分以上途切れている場合はエラー
   if (!ctx.result || (ctx.result.heartbeatAt && ctx.result.heartbeatAt < threshold)) {
     util.error(
-      `Group ${ctx.args.groupId}@${ctx.args.domain} does not exist or has been dissolved`,
+      `Group not found: ${ctx.args.groupId}@${ctx.args.domain}`,
       'GroupNotFound'
     );
   }
