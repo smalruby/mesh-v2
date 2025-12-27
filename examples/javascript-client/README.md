@@ -11,7 +11,7 @@ This prototype serves as a reference implementation for integrating Mesh v2 func
 - Domain generation from source IP via `createDomain` mutation
 - Real-time sensor data transmission with rate limiting
 - Event system with pub/sub capabilities
-- 90-minute session management
+- 50-minute session management
 - Pure JavaScript implementation (no TypeScript, no build tools)
 
 **Related Issues:**
@@ -140,8 +140,8 @@ You automatically become the **host** of the created group.
 
 ### 5. Session Management
 
-**90-Minute Timeout:**
-- Session timer counts down from 90 minutes
+**50-Minute Timeout:**
+- Session timer counts down from 50 minutes
 - Warning displayed when 5 minutes remaining (red text)
 - Automatic logout at session end
 - Auto-leaves group before disconnect
@@ -268,7 +268,7 @@ if (detector.hasChanged('temperature', 25)) {
 - [ ] Clear history works
 
 #### Session Management
-- [ ] Timer counts down from 90 minutes
+- [ ] Timer counts down from 50 minutes
 - [ ] Warning appears at 5 minutes
 - [ ] Logout occurs at timeout
 
@@ -332,7 +332,7 @@ The prototype has the following implementation status:
 ### Session Issues
 
 **"Session timeout"**
-- Sessions last 90 minutes maximum
+- Sessions last 50 minutes maximum
 - Reconnect to start new session
 - Groups are automatically left before timeout
 
@@ -368,7 +368,7 @@ const state = {
   currentGroup: null,     // Current group object
   currentNodeId: null,    // Generated node ID
   selectedGroupId: null,  // UI selected group
-  sessionStartTime: null, // For 90-min timer
+  sessionStartTime: null, // For 50-min timer
   sensorData: {},         // Current sensor values
   eventHistory: []        // Last 20 events
 };
