@@ -56,7 +56,9 @@ class MeshClient {
       const result = await response.json();
 
       if (result.errors) {
-        throw new Error(result.errors[0].message);
+        const error = new Error(result.errors[0].message);
+        error.graphQLErrors = result.errors;
+        throw error;
       }
 
       return result.data;

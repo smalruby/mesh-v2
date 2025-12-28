@@ -155,6 +155,33 @@ function setupSensorListeners() {
 }
 
 /**
+ * Check if the error indicates the group/node is no longer valid
+ * @param {Error} error - The error to check
+ * @returns {boolean} true if should disconnect
+ */
+function shouldDisconnectOnError(error) {
+  if (!error) return false;
+
+  // Check GraphQL errorType if available
+  if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+    const errorType = error.graphQLErrors[0].errorType;
+    if (['GroupNotFound', 'Unauthorized', 'NodeNotFound'].includes(errorType)) {
+      return true;
+    }
+  }
+
+  // Fallback: check message string
+  if (error.message) {
+    const message = error.message.toLowerCase();
+    return message.includes('not found') || 
+           message.includes('expired') || 
+           message.includes('unauthorized');
+  }
+
+  return false;
+}
+
+/**
  * Handle connection to Mesh v2
  */
 async function handleConnect() {
@@ -682,6 +709,9 @@ async function handleSensorChange(sensorName, value) {
   } catch (error) {
     showError('sensorError', 'Failed to send sensor data: ' + error.message);
     console.error('Sensor data error:', error);
+    if (shouldDisconnectOnError(error)) {
+      handleGroupDissolved({ message: 'Connection lost' });
+    }
   }
 }
 
@@ -733,6 +763,9 @@ async function handleSendEvent() {
   } catch (error) {
     showError('eventError', 'Failed to send event: ' + error.message);
     console.error('Send event error:', error);
+    if (shouldDisconnectOnError(error)) {
+      handleGroupDissolved({ message: 'Connection lost' });
+    }
   }
 }
 
@@ -909,8 +942,7 @@ function startHeartbeat() {
       }
     } catch (error) {
       console.error('Heartbeat renewal failed:', error);
-      // If it's a "GroupNotFound" or similar, we might have been disconnected
-      if (error.message.includes('not found') || error.message.includes('expired')) {
+      if (shouldDisconnectOnError(error)) {
         handleGroupDissolved({ message: 'Session expired or group lost' });
       }
     }
