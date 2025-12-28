@@ -48,11 +48,72 @@ cd /Users/kouji/work/smalruby/smalruby3-develop/infra/mesh-v2
 # npm依存関係のインストール
 npm install
 
+# Ruby依存関係のインストール（テスト実行に必要）
+bundle install
+
 # TypeScriptのビルド
 npm run build
 ```
 
-## 3. CDK Bootstrap（初回のみ）
+## 3. 環境変数の設定
+
+Mesh v2では、ハートビート間隔やTTL設定を環境変数で管理します。
+
+### 3.1 環境変数ファイルの作成
+
+```bash
+# .env.example をコピーして .env を作成
+cp .env.example .env
+
+# .env ファイルを編集（任意）
+# デフォルトでは開発環境向けの設定がコメントアウトされています
+```
+
+### 3.2 環境変数の説明
+
+| 変数名 | 開発環境推奨値 | 本番環境推奨値 | 説明 |
+|--------|--------------|--------------|------|
+| `MESH_SECRET_KEY` | `dev-secret-key-for-testing` | （GitHub Secretsで設定） | ドメイン検証用の秘密鍵 |
+| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `30` | ホストのハートビート送信間隔（秒） |
+| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | ホストグループの有効期限（秒） |
+| `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | メンバーのハートビート送信間隔（秒） |
+| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | メンバーノードの有効期限（秒） |
+| `MESH_MAX_CONNECTION_TIME_MINUTES` | `10` | `50` | グループの最大接続時間（分） |
+
+### 3.3 開発環境用の設定（stg）
+
+迅速なデバッグのため、短い間隔を使用します:
+
+```bash
+# .env ファイルの内容（開発環境用）
+MESH_SECRET_KEY=dev-secret-key-for-testing
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=15
+MESH_HOST_HEARTBEAT_TTL_SECONDS=60
+MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=15
+MESH_MEMBER_HEARTBEAT_TTL_SECONDS=60
+MESH_MAX_CONNECTION_TIME_MINUTES=10
+```
+
+### 3.4 本番環境用の設定（prod）
+
+コスト最適化のため、長い間隔を使用します（約70%コスト削減）:
+
+```bash
+# 本番環境ではGitHub Secretsまたは環境変数で設定
+MESH_SECRET_KEY=<本番用の秘密鍵>
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30
+MESH_HOST_HEARTBEAT_TTL_SECONDS=150
+MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120
+MESH_MEMBER_HEARTBEAT_TTL_SECONDS=600
+MESH_MAX_CONNECTION_TIME_MINUTES=50
+```
+
+**重要**:
+- TTLはハートビート間隔の約5倍に設定することで、ネットワーク遅延やタイムアウトに対する耐性を確保
+- 開発環境では15秒間隔で素早くテスト可能
+- 本番環境では120秒間隔でコスト削減とUXのバランスを実現
+
+## 4. CDK Bootstrap（初回のみ）
 
 AWS環境でCDKを初めて使用する場合、bootstrapが必要です。
 
@@ -78,7 +139,7 @@ aws cloudformation describe-stacks --stack-name CDKToolkit
 
 スタックが存在すればbootstrap済みです。
 
-## 4. デプロイ前の確認
+## 5. デプロイ前の確認
 
 CloudFormationテンプレートを生成して、デプロイ内容を確認します。
 
@@ -90,37 +151,50 @@ npx cdk synth
 npx cdk diff
 ```
 
-## 5. デプロイ実行
+## 6. デプロイ実行
 
-### 5.1 ステージング環境と本番環境
+### 6.1 ステージング環境と本番環境
 
 Mesh v2では、ステージング環境（stg）と本番環境（prod）を分離して管理します。
 
-**ステージング環境へのデプロイ:**
+**ステージング環境へのデプロイ（開発用設定）:**
 
 ```bash
-# ステージング環境（デフォルト）
+# 1. .env ファイルで開発環境用の設定を確認
+cat .env
+
+# 2. ステージング環境へデプロイ
 npx cdk deploy --context stage=stg
 
 # または --context を省略（cdk.jsonのデフォルト値 "stg" が使用される）
 npx cdk deploy
 ```
 
-**本番環境へのデプロイ:**
+**本番環境へのデプロイ（本番用設定）:**
 
 ```bash
-# 本番環境
+# 環境変数を直接指定してデプロイ
+MESH_SECRET_KEY="<本番用秘密鍵>" \
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30 \
+MESH_HOST_HEARTBEAT_TTL_SECONDS=150 \
+MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120 \
+MESH_MEMBER_HEARTBEAT_TTL_SECONDS=600 \
 npx cdk deploy --context stage=prod
 ```
 
-### 5.2 デプロイされるリソース名
+**注意**: 環境変数は以下の優先順位で解決されます:
+1. コマンドライン環境変数（上記の方法）
+2. `.env` ファイル
+3. CDK stackのデフォルト値（fallback）
+
+### 6.2 デプロイされるリソース名
 
 | Stage | Stack名 | DynamoDB Table名 | AppSync API名 |
 |-------|---------|------------------|---------------|
 | stg | MeshV2Stack-stg | MeshV2Table-stg | MeshV2Api-stg |
 | prod | MeshV2Stack | MeshV2Table | MeshV2Api |
 
-### 5.3 リソースタグ
+### 6.3 リソースタグ
 
 すべてのリソースには以下のタグが自動的に付与されます:
 
@@ -158,9 +232,9 @@ arn:aws:cloudformation:ap-northeast-1:123456789012:stack/MeshV2Stack/xxxxxxxx-xx
 
 **重要**: `GraphQLApiEndpoint` と `GraphQLApiKey` の値を控えてください。動作確認で使用します。
 
-## 6. 動作確認
+## 7. 動作確認
 
-### 6.1 AWS Management Consoleでの確認
+### 7.1 AWS Management Consoleでの確認
 
 #### AppSync API の確認
 
@@ -175,7 +249,7 @@ arn:aws:cloudformation:ap-northeast-1:123456789012:stack/MeshV2Stack/xxxxxxxx-xx
 2. **Tables** から **MeshV2Table** を選択
 3. **Indexes** タブで **GroupIdIndex** GSIを確認
 
-### 6.2 GraphQL API のテスト
+### 7.2 GraphQL API のテスト
 
 AppSync Consoleの **Queries** タブで、以下のクエリをテストできます。
 
@@ -254,7 +328,7 @@ query IntrospectionQuery {
 }
 ```
 
-### 6.3 CLIからのテスト
+### 7.3 CLIからのテスト
 
 `curl` コマンドでAPIをテストすることもできます。
 
@@ -272,7 +346,7 @@ curl -X POST "$APPSYNC_ENDPOINT" \
   }' | jq
 ```
 
-### 6.4 リソースタグの確認
+### 7.4 リソースタグの確認
 
 デプロイされたリソースにタグが正しく付与されているか確認します。
 
@@ -341,7 +415,7 @@ aws dynamodb list-tags-of-resource --resource-arn $TABLE_ARN
 }
 ```
 
-### 6.5 DynamoDB Tableの確認
+### 7.5 DynamoDB Tableの確認
 
 ```bash
 # ステージング環境のテーブル詳細を確認
@@ -401,7 +475,52 @@ aws dynamodb describe-table --table-name MeshV2Table \
 +---------------+
 ```
 
-## 7. CloudWatch Logsの確認
+### 7.6 Integration Tests の実行
+
+デプロイ後、integration testsを実行して動作を検証します。
+
+```bash
+# 環境変数の設定
+export APPSYNC_ENDPOINT=$(aws cloudformation describe-stacks \
+  --stack-name MeshV2Stack-stg \
+  --query 'Stacks[0].Outputs[?OutputKey==`GraphQLApiEndpoint`].OutputValue' \
+  --output text)
+
+export APPSYNC_API_KEY=$(aws cloudformation describe-stacks \
+  --stack-name MeshV2Stack-stg \
+  --query 'Stacks[0].Outputs[?OutputKey==`GraphQLApiKey`].OutputValue' \
+  --output text)
+
+# 環境変数の確認
+echo "APPSYNC_ENDPOINT: $APPSYNC_ENDPOINT"
+echo "APPSYNC_API_KEY: $APPSYNC_API_KEY"
+
+# すべてのintegration testsを実行
+bundle exec rspec spec/requests/
+
+# 特定のテストファイルのみ実行
+bundle exec rspec spec/requests/heartbeat_spec.rb --format documentation
+bundle exec rspec spec/requests/member_heartbeat_spec.rb --format documentation
+```
+
+テスト実行結果の例:
+```
+Heartbeat API
+  renewHeartbeat mutation
+    ホストがハートビートを更新できる
+    ホスト以外のノードがハートビートを更新しようとするとエラー
+
+Member Heartbeat API
+  sendMemberHeartbeat mutation
+    メンバーがハートビートを更新できる
+    存在しないグループに対してメンバーハートビートを送るとエラー
+    存在しないノードに対してメンバーハートビートを送るとエラー
+
+Finished in 2.5 seconds (files took 0.8 seconds to load)
+5 examples, 0 failures
+```
+
+## 8. CloudWatch Logsの確認
 
 AppSync APIのログはCloudWatch Logsに出力されます。
 
@@ -421,7 +540,7 @@ echo "Log Group: $LOG_GROUP_NAME"
 aws logs tail "$LOG_GROUP_NAME" --follow
 ```
 
-## 8. X-Ray トレースの確認
+## 9. X-Ray トレースの確認
 
 X-Rayトレーシングが有効になっているため、リクエストのトレース情報を確認できます。
 
@@ -429,11 +548,11 @@ X-Rayトレーシングが有効になっているため、リクエストのト
 2. **Service map** でMeshV2Apiを確認
 3. **Traces** でリクエストの詳細を確認
 
-## 9. AWS Resource Groups でのリソース管理
+## 10. AWS Resource Groups でのリソース管理
 
 タグを使ってリソースをグルーピングし、一元管理できます。
 
-### 9.1 リソースグループの作成
+### 10.1 リソースグループの作成
 
 **ステージング環境のリソースグループ:**
 
@@ -459,7 +578,7 @@ aws resource-groups create-group \
   --tags Project=MeshV2,Stage=prod
 ```
 
-### 9.2 リソースグループの確認
+### 10.2 リソースグループの確認
 
 ```bash
 # グループ一覧
@@ -469,7 +588,7 @@ aws resource-groups list-groups
 aws resource-groups list-group-resources --group-name MeshV2-stg
 ```
 
-### 9.3 コスト分析
+### 10.3 コスト分析
 
 AWS Cost Explorerでタグを使ったコスト分析が可能です。
 
@@ -504,7 +623,7 @@ aws ce get-cost-and-usage \
   }'
 ```
 
-## 10. リソースの削除（必要な場合）
+## 11. リソースの削除（必要な場合）
 
 開発環境のリソースを削除する場合:
 

@@ -932,7 +932,7 @@ function stopHeartbeat() {
 /**
  * Start session timer
  * If in a group, uses expiresAt from the group.
- * Otherwise uses a default 50 minute limit from connection.
+ * Otherwise uses a default 10 minute limit from connection.
  */
 function startSessionTimer() {
   // Prevent multiple timers
@@ -950,7 +950,7 @@ function startSessionTimer() {
     } else if (state.sessionStartTime) {
       // Fallback to connection-based timer
       const elapsed = Date.now() - state.sessionStartTime;
-      remaining = (50 * 60 * 1000) - elapsed;
+      remaining = (10 * 60 * 1000) - elapsed;
     } else {
       return;
     }

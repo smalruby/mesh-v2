@@ -4,5 +4,6 @@ mutation JoinGroup($groupId: ID!, $domain: String!, $nodeId: ID!) {
     name
     groupId
     domain
+    heartbeatIntervalSeconds
   }
 }

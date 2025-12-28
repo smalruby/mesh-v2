@@ -68,9 +68,79 @@ mesh-v2/
 ├── .rspec                      # RSpec settings
 ├── cdk.json                    # CDK configuration (stage context)
 ├── package.json                # Node.js dependencies
+├── .env.example                # Environment variables template
+├── .env                        # Local environment variables (git-ignored)
 ├── DEPLOYMENT.md               # Deployment guide
 └── CLAUDE.md                   # This file
 ```
+
+## Environment Variables
+
+Mesh v2 uses environment variables for configuration, allowing different settings for development and production environments.
+
+### Configuration Files
+
+**`.env.example`**: Template file with production defaults (committed to git)
+**`.env`**: Local configuration file (git-ignored, created from `.env.example`)
+
+### Variables
+
+| Variable | Development | Production | Description |
+|----------|-------------|------------|-------------|
+| `MESH_SECRET_KEY` | `dev-secret-key-for-testing` | (set in GitHub Secrets) | Secret key for domain validation |
+| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `30` | Host heartbeat interval in seconds |
+| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | Host group TTL in seconds (5× interval) |
+| `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | Member heartbeat interval in seconds |
+| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | Member node TTL in seconds (5× interval) |
+| `MESH_MAX_CONNECTION_TIME_MINUTES` | `10` | `50` | Maximum connection time for a group (minutes) |
+
+### Setup for Local Development
+
+```bash
+# Copy template to create local .env file
+cp .env.example .env
+
+# Edit .env with development values (already set by default)
+# Development values use faster intervals for easier debugging
+
+# Deploy with local .env
+npx cdk deploy --context stage=stg
+```
+
+### Setup for Production Deployment
+
+**GitHub Actions**: Set repository secrets for production deployment
+- `MESH_SECRET_KEY`
+- `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS`
+- `MESH_HOST_HEARTBEAT_TTL_SECONDS`
+- `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS`
+- `MESH_MEMBER_HEARTBEAT_TTL_SECONDS`
+
+**Command Line Override**:
+```bash
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30 \
+MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120 \
+npx cdk deploy --context stage=prod
+```
+
+### Rationale for Different Configurations
+
+**Development (Fast intervals)**:
+- Faster debugging and testing cycles
+- Quickly see heartbeat failures and TTL expirations
+- Higher cost but acceptable for staging environment
+
+**Production (Slower intervals)**:
+- Cost optimization (~70% cost reduction)
+- Member heartbeat at 120s reduces API calls while maintaining UX
+- Host heartbeat at 30s ensures quick group dissolution detection
+- TTL at 5× interval tolerates network hiccups
+
+### How Environment Variables are Used
+
+1. **CDK Stack** (`lib/mesh-v2-stack.ts`): Reads env vars and passes to AppSync API and Lambda functions
+2. **AppSync Resolvers** (`js/functions/*.js`, `js/resolvers/*.js`): Access via `ctx.env.*`
+3. **Lambda Functions** (`lambda/**/*.rb`): Access via `ENV['*']`
 
 ## TDD Development Flow
 

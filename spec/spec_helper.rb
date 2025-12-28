@@ -47,13 +47,24 @@ def execute_graphql(query, variables = {})
   })
 
   response = http.request(request)
-  JSON.parse(response.body)
+  response_body = JSON.parse(response.body)
+  if response_body["errors"]
+    puts "GraphQL Errors: #{response_body["errors"].inspect}"
+  end
+  response_body
 end
 
 # テスト用グループ作成ヘルパー
-def create_test_group(name, host_id, domain)
+def create_test_group(name, host_id, domain, max_connection_time_seconds: nil)
   query = File.read(File.join(__dir__, "fixtures/mutations/create_group.graphql"))
-  response = execute_graphql(query, {name: name, hostId: host_id, domain: domain})
+  variables = {
+    name: name,
+    hostId: host_id,
+    domain: domain
+  }
+  variables[:maxConnectionTimeSeconds] = max_connection_time_seconds if max_connection_time_seconds
+
+  response = execute_graphql(query, variables)
   response["data"]["createGroup"]
 end
 

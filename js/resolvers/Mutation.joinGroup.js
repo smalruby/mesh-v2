@@ -7,6 +7,11 @@ export function request(ctx) {
   const { groupId, domain, nodeId } = ctx.args;
   const now = util.time.nowISO8601();
 
+  // Read member TTL from environment variable
+  const ttlSeconds = +(ctx.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600');
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const ttl = nowEpoch + ttlSeconds;
+
   return {
     operation: 'TransactWriteItems',
     transactItems: [
@@ -36,7 +41,8 @@ export function request(ctx) {
           groupId: groupId,
           domain: domain,
           name: `Node ${nodeId}`,
-          joinedAt: now
+          joinedAt: now,
+          ttl: ttl
         })
       },
       // 2. ノードの所属情報を作成（逆引き用）
@@ -53,7 +59,8 @@ export function request(ctx) {
           groupId: groupId,
           domain: domain,
           name: `Node ${nodeId}`,
-          joinedAt: now
+          joinedAt: now,
+          ttl: ttl
         })
       }
     ]
@@ -73,6 +80,7 @@ export function response(ctx) {
     id: nodeId,
     name: `Node ${nodeId}`,
     groupId: groupId,
-    domain: domain
+    domain: domain,
+    heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120')
   };
 }

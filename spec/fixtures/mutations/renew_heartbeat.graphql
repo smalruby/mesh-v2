@@ -3,5 +3,6 @@ mutation RenewHeartbeat($groupId: ID!, $domain: String!, $hostId: ID!) {
     groupId
     domain
     expiresAt
+    heartbeatIntervalSeconds
   }
 }

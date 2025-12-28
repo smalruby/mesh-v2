@@ -70,6 +70,9 @@ export class MeshV2Stack extends cdk.Stack {
       description: 'DynamoDB table ARN for Mesh v2',
     });
 
+    // Environment variables defaults based on stage
+    const defaultMaxConnTimeSeconds = stage === 'prod' ? '3000' : '600';
+
     // AppSync GraphQL API for Mesh v2
     this.api = new appsync.GraphqlApi(this, 'MeshV2Api', {
       name: `MeshV2Api${stageSuffix}`,
@@ -84,6 +87,11 @@ export class MeshV2Stack extends cdk.Stack {
       },
       environmentVariables: {
         TABLE_NAME: this.table.tableName,
+        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30',
+        MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
+        MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
+        MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
+        MESH_MAX_CONNECTION_TIME_SECONDS: process.env.MESH_MAX_CONNECTION_TIME_SECONDS || defaultMaxConnTimeSeconds,
       },
       xrayEnabled: true,
       logConfig: {
@@ -253,6 +261,33 @@ export class MeshV2Stack extends cdk.Stack {
       `)
     });
 
+    // Function: updateNodeTTL
+    const updateNodeTTLFunction = new appsync.AppsyncFunction(this, 'UpdateNodeTTLFunction', {
+      name: 'updateNodeTTL',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/updateNodeTTL.js'))
+    });
+
+    // Pipeline Resolver: sendMemberHeartbeat (グループ存在確認 → Node TTL更新)
+    new appsync.Resolver(this, 'SendMemberHeartbeatResolver', {
+      api: this.api,
+      typeName: 'Mutation',
+      fieldName: 'sendMemberHeartbeat',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      pipelineConfig: [checkGroupExistsFunction, updateNodeTTLFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
+    });
+
     // Function: reportDataByNode (main logic)
     const reportDataByNodeFunction = new appsync.AppsyncFunction(this, 'ReportDataByNodeFunction', {
       name: 'reportDataByNode',
@@ -321,6 +356,11 @@ export class MeshV2Stack extends cdk.Stack {
       environment: {
         DYNAMODB_TABLE_NAME: this.table.tableName,
         MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
+        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30',
+        MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
+        MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
+        MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
+        MESH_MAX_CONNECTION_TIME_SECONDS: process.env.MESH_MAX_CONNECTION_TIME_SECONDS || defaultMaxConnTimeSeconds,
       },
       timeout: cdk.Duration.seconds(30),
     });

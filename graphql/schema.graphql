@@ -27,6 +27,7 @@ type Node {
   name: String!
   groupId: ID
   domain: String    # 所属しているdomain
+  heartbeatIntervalSeconds: Int
 }
 
 type NodeStatus {
@@ -56,6 +57,15 @@ type HeartbeatPayload {
   groupId: ID!
   domain: String!
   expiresAt: AWSDateTime!
+  heartbeatIntervalSeconds: Int
+}
+
+type MemberHeartbeatPayload {
+  nodeId: ID!
+  groupId: ID!
+  domain: String!
+  expiresAt: AWSDateTime!
+  heartbeatIntervalSeconds: Int
 }
 
 type LeaveGroupPayload {
@@ -96,6 +106,7 @@ type Mutation {
     name: String!
     hostId: ID!
     domain: String!
+    maxConnectionTimeSeconds: Int  # オプション: 1以上、環境変数の値以下
   ): Group!
 
   joinGroup(
@@ -117,12 +128,19 @@ type Mutation {
     hostId: ID!
   ): GroupDissolvePayload
 
-  # ハートビート更新
+  # ハートビート更新 (Host)
   renewHeartbeat(
     groupId: ID!
     domain: String!
     hostId: ID!
   ): HeartbeatPayload!
+
+  # ハートビート更新 (Member)
+  sendMemberHeartbeat(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+  ): MemberHeartbeatPayload!
 
   # データ通信
   # Note: nullableにすることでSubscription型と一致させる

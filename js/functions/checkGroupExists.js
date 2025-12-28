@@ -17,13 +17,33 @@ export function request(ctx) {
 }
 
 export function response(ctx) {
+  const { groupId, domain } = ctx.args;
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const threshold = nowEpoch - 60; // 1分前
+  const heartbeatThreshold = nowEpoch - 60; // heartbeat閾値: 60秒
 
-  // グループが存在しない、またはハートビートが1分以上途切れている場合はエラー
-  if (!ctx.result || (ctx.result.heartbeatAt && ctx.result.heartbeatAt < threshold)) {
+  // グループが存在しない
+  if (!ctx.result) {
     util.error(
-      `Group ${ctx.args.groupId}@${ctx.args.domain} does not exist or has been dissolved`,
+      `Group not found: ${groupId}@${domain}`,
+      'GroupNotFound'
+    );
+  }
+
+  // チェック1: expiresAt（絶対的な有効期限）
+  if (ctx.result.expiresAt) {
+    const expiresAtEpoch = Math.floor(util.time.parseISO8601ToEpochMilliSeconds(ctx.result.expiresAt) / 1000);
+    if (nowEpoch > expiresAtEpoch) {
+      util.error(
+        `Group expired: ${groupId}@${domain} (expiresAt: ${ctx.result.expiresAt})`,
+        'GroupNotFound'
+      );
+    }
+  }
+
+  // チェック2: heartbeatAt（相対的な有効期限）
+  if (ctx.result.heartbeatAt && ctx.result.heartbeatAt < heartbeatThreshold) {
+    util.error(
+      `Group not found: ${groupId}@${domain} (heartbeat expired)`,
       'GroupNotFound'
     );
   }
