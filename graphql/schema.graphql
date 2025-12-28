@@ -106,6 +106,7 @@ type Mutation {
     name: String!
     hostId: ID!
     domain: String!
+    maxConnectionTimeSeconds: Int  # オプション: 1以上、環境変数の値以下
   ): Group!
 
   joinGroup(

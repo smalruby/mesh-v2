@@ -16,11 +16,28 @@ export function request(ctx) {
   }
 
   // 新規グループ作成
-  const { name, hostId, domain } = ctx.args;
+  const { name, hostId, domain, maxConnectionTimeSeconds } = ctx.args;
 
   // Domain文字列のバリデーション（最大256文字）
   if (domain.length > 256) {
     util.error('Domain must be 256 characters or less', 'ValidationError');
+  }
+
+  // maxConnectionTimeSeconds のバリデーションと決定
+  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '3000');
+  let actualMaxSeconds = envMaxSeconds;
+
+  if (maxConnectionTimeSeconds !== undefined && maxConnectionTimeSeconds !== null) {
+    if (maxConnectionTimeSeconds < 1) {
+      util.error('maxConnectionTimeSeconds must be at least 1', 'ValidationError');
+    }
+    if (maxConnectionTimeSeconds > envMaxSeconds) {
+      util.error(
+        `maxConnectionTimeSeconds cannot exceed ${envMaxSeconds}`,
+        'ValidationError'
+      );
+    }
+    actualMaxSeconds = maxConnectionTimeSeconds;
   }
 
   // グループID生成
@@ -28,8 +45,7 @@ export function request(ctx) {
   const fullId = `${groupId}@${domain}`;
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const maxConnTimeMinutes = +(ctx.env.MESH_MAX_CONNECTION_TIME_MINUTES || '50');
-  const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + maxConnTimeMinutes * 60 * 1000);
+  const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + actualMaxSeconds * 1000);
   const ttl = nowEpoch + 60; // 1分間
 
   return {

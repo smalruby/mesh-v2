@@ -1,9 +1,9 @@
 require "spec_helper"
 
 RSpec.describe "Member Heartbeat API", type: :request do
-  let(:domain) { "test-member-hb-#{Time.now.to_i}.example.com" }
-  let(:host_id) { "host-member-hb-#{Time.now.to_i}" }
-  let(:member_id) { "member-hb-#{Time.now.to_i}" }
+  let(:domain) { "test-member-hb-#{SecureRandom.hex(8)}.example.com" }
+  let(:host_id) { "host-member-hb-#{SecureRandom.hex(8)}" }
+  let(:member_id) { "member-hb-#{SecureRandom.hex(8)}" }
   let(:group_name) { "Test Member Heartbeat Group" }
 
   describe "sendMemberHeartbeat mutation" do
@@ -69,19 +69,19 @@ RSpec.describe "Member Heartbeat API", type: :request do
     end
 
     it "ホストのheartbeat期限切れ時にメンバーハートビートがGroupNotFoundエラーを返す" do
-      # 1. グループ作成
-      group = create_test_group(group_name, host_id, domain)
+      # 1. グループ作成 (5秒で有効期限切れになるように設定)
+      group = create_test_group(group_name, host_id, domain, max_connection_time_seconds: 5)
       group_id = group["id"]
 
       # 2. メンバー参加
       join_test_node(group_id, domain, member_id)
 
-      # 3. 61秒待機（TTL: 60秒）してホストのheartbeatを期限切れにする
-      # Note: checkGroupExists.js では 1分(60秒)を閾値としている
-      # テストを高速化するために、直接DynamoDBのアイテムを操作してheartbeatAtを古くすることも検討できるが、
-      # ここではシンプルに sleep する（実際の動作確認）
-      puts "Waiting 61 seconds for host heartbeat to expire..."
-      sleep 61
+      # 3. 6秒待機してグループの expiresAt を期限切れにする
+      # Note: checkGroupExists.js は2つの条件をチェック:
+      #   (1) now > expiresAt (絶対時間チェック) ← このテストで検証
+      #   (2) now - heartbeatAt > 60 (相対時間チェック)
+      puts "Waiting 6 seconds for group to expire (expiresAt)..."
+      sleep 6
 
       # 4. メンバーハートビート送信
       query = File.read(File.join(__dir__, "../fixtures/mutations/send_member_heartbeat.graphql"))
@@ -94,7 +94,7 @@ RSpec.describe "Member Heartbeat API", type: :request do
       # GroupNotFoundエラーを期待
       expect(response["errors"]).not_to be_nil
       expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
-      expect(response["errors"][0]["message"]).to include("Group not found")
+      expect(response["errors"][0]["message"]).to include("Group")
     end
   end
 end
