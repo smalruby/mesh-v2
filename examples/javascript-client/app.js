@@ -17,6 +17,7 @@ const state = {
   heartbeatTimerId: null,
   dataSubscriptionId: null,
   eventSubscriptionId: null,
+  batchEventSubscriptionId: null,
   dissolveSubscriptionId: null,
   sensorData: {
     temperature: 20,
@@ -119,6 +120,7 @@ function setupEventListeners() {
 
   // Events
   document.getElementById('sendEventBtn').addEventListener('click', handleSendEvent);
+  document.getElementById('sendBatchEventBtn').addEventListener('click', handleSendBatchEvent);
   document.getElementById('clearEventsBtn').addEventListener('click', handleClearEvents);
 }
 
@@ -428,6 +430,13 @@ async function handleJoinGroup() {
       handleEventReceived
     );
 
+    // Subscribe to batch events in group
+    state.batchEventSubscriptionId = state.client.subscribeToBatchEvents(
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      handleBatchEventReceived
+    );
+
     // Subscribe to group dissolution
     state.dissolveSubscriptionId = state.client.subscribeToGroupDissolve(
       state.currentGroup.id,
@@ -474,6 +483,12 @@ async function handleLeaveGroup() {
     if (state.eventSubscriptionId) {
       state.client.unsubscribe(state.eventSubscriptionId);
       state.eventSubscriptionId = null;
+    }
+
+    // Unsubscribe from batch events
+    if (state.batchEventSubscriptionId) {
+      state.client.unsubscribe(state.batchEventSubscriptionId);
+      state.batchEventSubscriptionId = null;
     }
 
     // Unsubscribe from dissolve notifications
@@ -542,6 +557,12 @@ async function handleDissolveGroup() {
       state.eventSubscriptionId = null;
     }
 
+    // Unsubscribe from batch events
+    if (state.batchEventSubscriptionId) {
+      state.client.unsubscribe(state.batchEventSubscriptionId);
+      state.batchEventSubscriptionId = null;
+    }
+
     stopHeartbeat();
 
     state.currentGroup = null;
@@ -606,6 +627,12 @@ async function handleDisconnect() {
     if (state.eventSubscriptionId) {
       state.client.unsubscribe(state.eventSubscriptionId);
       state.eventSubscriptionId = null;
+    }
+
+    // Unsubscribe from batch events
+    if (state.batchEventSubscriptionId) {
+      state.client.unsubscribe(state.batchEventSubscriptionId);
+      state.batchEventSubscriptionId = null;
     }
 
     // Stop session timer
@@ -770,6 +797,41 @@ async function handleSendEvent() {
 }
 
 /**
+ * Handle send 3 events batch
+ */
+async function handleSendBatchEvent() {
+  if (!state.currentGroup) {
+    showError('eventError', 'Not in a group');
+    return;
+  }
+
+  const events = [
+    { eventName: 'batch-1', payload: 'first', firedAt: new Date().toISOString() },
+    { eventName: 'batch-2', payload: 'second', firedAt: new Date().toISOString() },
+    { eventName: 'batch-3', payload: 'third', firedAt: new Date().toISOString() }
+  ];
+
+  try {
+    const result = await state.client.fireEventsByNode(
+      state.currentNodeId,
+      state.currentGroup.id,
+      state.currentGroup.domain,
+      events
+    );
+
+    console.log('Batch events sent:', result);
+    showSuccess('eventSuccess', 'Sent 3 events in one batch');
+  } catch (error) {
+    console.error('Failed to send batch events:', error);
+    showError('eventError', `Failed to send batch: ${error.message}`);
+    
+    if (shouldDisconnectOnError(error)) {
+      handleDisconnect();
+    }
+  }
+}
+
+/**
  * Add event to history
  */
 function addEventToHistory(event) {
@@ -826,6 +888,22 @@ function handleEventReceived(event) {
 }
 
 /**
+ * Handle batch event received from subscription
+ */
+function handleBatchEventReceived(batchEvent) {
+  console.log('Batch event received from subscription:', batchEvent);
+
+  if (!batchEvent || !batchEvent.events) return;
+
+  // Add each event to history
+  batchEvent.events.forEach(event => {
+    addEventToHistory(event);
+  });
+
+  showSuccess('eventSuccess', `Received batch of ${batchEvent.events.length} events from ${batchEvent.firedByNodeId}`);
+}
+
+/**
  * Handle group dissolution notification
  */
 function handleGroupDissolved(dissolveData) {
@@ -840,6 +918,11 @@ function handleGroupDissolved(dissolveData) {
   if (state.eventSubscriptionId) {
     state.client.unsubscribe(state.eventSubscriptionId);
     state.eventSubscriptionId = null;
+  }
+
+  if (state.batchEventSubscriptionId) {
+    state.client.unsubscribe(state.batchEventSubscriptionId);
+    state.batchEventSubscriptionId = null;
   }
 
       if (state.dissolveSubscriptionId) {
@@ -1082,6 +1165,7 @@ function updateUI() {
   }
 
   document.getElementById('sendEventBtn').disabled = !inGroup;
+  document.getElementById('sendBatchEventBtn').disabled = !inGroup;
 
   // Update rate status
   updateRateStatus();
