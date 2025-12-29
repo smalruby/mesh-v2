@@ -18,9 +18,10 @@ export function request(ctx) {
       })
     },
     filter: {
-      expression: 'heartbeatAt > :threshold',
+      expression: 'heartbeatAt > :threshold AND expiresAt > :now',
       expressionValues: util.dynamodb.toMapValues({
-        ':threshold': threshold
+        ':threshold': threshold,
+        ':now': util.time.nowISO8601()
       })
     }
   };

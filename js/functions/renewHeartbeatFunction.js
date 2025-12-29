@@ -42,13 +42,12 @@ export function response(ctx) {
   }
 
   const { groupId, domain } = ctx.args;
-  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
-  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const group = ctx.stash.group;
 
   return {
     groupId: groupId,
     domain: domain,
-    expiresAt: util.time.epochMilliSecondsToISO8601((nowEpoch + ttlSeconds) * 1000),
+    expiresAt: group.expiresAt,
     heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30')
   };
 }

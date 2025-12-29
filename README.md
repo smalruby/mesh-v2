@@ -29,6 +29,60 @@ Mesh v2 is a cloud-based backend system that enables real-time data sharing and 
 - **Event Rate**: 2 events/sec/group
 - **Total Write Load**: 170 TPS
 
+## Event Batching
+
+Mesh v2 supports batch event sending to optimize AWS AppSync Subscription costs and preserve event timing.
+
+### Mechanism
+
+Instead of sending each event individually, events are queued and sent in batches every 250ms.
+
+- **Mutation**: `fireEventsByNode(groupId, domain, nodeId, events: [EventInput!]!)`
+- **Subscription**: `onBatchEventInGroup(groupId, domain)`
+
+When receiving a `BatchEvent`, clients calculate the relative offset for each event based on its `firedAt` timestamp to reproduce the original firing interval.
+
+### Performance Impact
+
+- **Cost Reduction**: Multiple events (up to 1,000) are delivered in a single Subscription message. This directly reduces the number of Subscription delivery units charged by AWS AppSync.
+- **Latency**: A maximum delay of 250ms is introduced on the sender side for batching.
+- **Payload Limit**: AWS AppSync Subscription payload limit is 240 KB. Mesh v2 automatically splits batches larger than 1,000 events to stay within this limit.
+
+### Usage Example (JavaScript)
+
+```javascript
+// Sending multiple events
+const events = [
+  { eventName: 'e1', payload: 'p1', firedAt: new Date().toISOString() },
+  { eventName: 'e2', payload: 'p2', firedAt: new Date().toISOString() }
+];
+
+await client.mutate({
+  mutation: FIRE_EVENTS,
+  variables: { groupId, domain, nodeId, events }
+});
+
+// Receiving batch events
+subscription.subscribe({
+  next: (data) => {
+    const batch = data.onBatchEventInGroup;
+    const sorted = batch.events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const baseTime = new Date(sorted[0].timestamp).getTime();
+    
+    sorted.forEach(event => {
+      const offset = new Date(event.timestamp).getTime() - baseTime;
+      setTimeout(() => broadcast(event), offset);
+    });
+  }
+});
+```
+
+### Best Practices
+
+1. **Use Batching for High-Frequency Events**: Prefer `fireEventsByNode` over `fireEventByNode` when sending multiple events in a short period.
+2. **Include Timestamps**: Always provide accurate `firedAt` timestamps to ensure correct timing reproduction on the receiver side.
+3. **Payload Size**: Keep individual event payloads small. Although the batch limit is 1,000 events, large payloads might hit the 240 KB limit sooner.
+
 ## Setup
 
 ### Prerequisites

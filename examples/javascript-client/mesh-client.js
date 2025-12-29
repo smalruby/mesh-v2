@@ -56,7 +56,9 @@ class MeshClient {
       const result = await response.json();
 
       if (result.errors) {
-        throw new Error(result.errors[0].message);
+        const error = new Error(result.errors[0].message);
+        error.graphQLErrors = result.errors;
+        throw error;
       }
 
       return result.data;
@@ -385,6 +387,39 @@ class MeshClient {
   }
 
   /**
+   * Fire multiple events in a batch
+   */
+  async fireEventsByNode(nodeId, groupId, domain, events) {
+    const query = `
+      mutation FireEventsByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $events: [EventInput!]!) {
+        fireEventsByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, nodeId: $nodeId, events: $events) {
+          events {
+            name
+            firedByNodeId
+            groupId
+            domain
+            payload
+            timestamp
+          }
+          firedByNodeId
+          groupId
+          domain
+          timestamp
+        }
+      }
+    `;
+
+    const result = await this.execute(query, {
+      nodeId,
+      groupId,
+      domain: domain || this.domain,
+      events
+    });
+
+    return result.fireEventsByNode;
+  }
+
+  /**
    * Subscribe to sensor data updates via WebSocket
    */
   subscribeToDataUpdates(groupId, domain, callback) {
@@ -485,6 +520,56 @@ class MeshClient {
             if (err.locations) console.error('  Locations:', err.locations);
           });
         }
+      }
+    });
+
+    this.subscriptions.set(subscriptionId, sub);
+
+    return subscriptionId;
+  }
+
+  /**
+   * Subscribe to batch events in group via WebSocket
+   */
+  subscribeToBatchEvents(groupId, domain, callback) {
+    console.log('Subscription: onBatchEventInGroup', { groupId, domain });
+
+    const subscriptionId = `batch-event-${groupId}`;
+    this.eventHandlers.set(subscriptionId, callback);
+
+    // GraphQL subscription query
+    const subscription = `
+      subscription OnBatchEventInGroup($groupId: ID!, $domain: String!) {
+        onBatchEventInGroup(groupId: $groupId, domain: $domain) {
+          events {
+            name
+            firedByNodeId
+            groupId
+            domain
+            payload
+            timestamp
+          }
+          firedByNodeId
+          groupId
+          domain
+          timestamp
+        }
+      }
+    `;
+
+    // Subscribe using Amplify
+    const sub = this.graphqlClient.graphql({
+      query: subscription,
+      variables: { groupId, domain: domain || this.domain }
+    }).subscribe({
+      next: ({ data }) => {
+        console.log('Batch event received:', data);
+        if (callback && data && data.onBatchEventInGroup) {
+          callback(data.onBatchEventInGroup);
+        }
+      },
+      error: (error) => {
+        console.error('Batch event subscription error:', error);
       }
     });
 
