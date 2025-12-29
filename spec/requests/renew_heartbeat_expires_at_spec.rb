@@ -24,10 +24,10 @@ RSpec.describe "Heartbeat API - expiresAt consistency", type: :request do
 
     create_response = execute_graphql(create_mutation, create_vars)
     expect(create_response["data"]["createGroup"]).not_to be_nil
-    
+
     group_id = create_response["data"]["createGroup"]["id"]
     original_expires_at = create_response["data"]["createGroup"]["expiresAt"]
-    
+
     expect(group_id).not_to be_nil
     expect(original_expires_at).not_to be_nil
 
@@ -52,9 +52,9 @@ RSpec.describe "Heartbeat API - expiresAt consistency", type: :request do
 
     renew_response = execute_graphql(renew_mutation, renew_vars)
     expect(renew_response["data"]["renewHeartbeat"]).not_to be_nil
-    
+
     renewed_expires_at = renew_response["data"]["renewHeartbeat"]["expiresAt"]
-    
+
     # Check that expiresAt remains unchanged (it should be the group's original expiration time)
     expect(renewed_expires_at).to eq(original_expires_at)
   end
