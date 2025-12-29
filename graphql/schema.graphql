@@ -47,6 +47,22 @@ type Event {
   timestamp: AWSDateTime!
 }
 
+# イベントのバッチ送信用の入力型
+input EventInput {
+  eventName: String!
+  payload: String
+  firedAt: AWSDateTime!  # イベント発火日時（ISO 8601形式、ミリ秒含む）
+}
+
+# バッチイベント型（複数イベントを含む）
+type BatchEvent {
+  events: [Event!]!      # イベントの配列
+  firedByNodeId: ID!
+  groupId: ID!
+  domain: String!
+  timestamp: AWSDateTime!
+}
+
 type GroupDissolvePayload {
   groupId: ID!
   domain: String!
@@ -159,6 +175,14 @@ type Mutation {
     eventName: String!
     payload: String
   ): Event
+
+  # 複数イベントを一度に送信（1回のSubscriptionを発火）
+  fireEventsByNode(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+    events: [EventInput!]!
+  ): BatchEvent
 }
 
 # --- サブスクリプション (Subscriptions) ---
@@ -175,6 +199,11 @@ type Subscription {
   # Note: nullableにすることで、Eventが存在しない場合でもエラーを防ぐ
   onEventInGroup(groupId: ID!, domain: String!): Event
     @aws_subscribe(mutations: ["fireEventByNode"])
+
+  # グループ内のバッチイベントを購読
+  # fireEventsByNode mutation がトリガー
+  onBatchEventInGroup(groupId: ID!, domain: String!): BatchEvent
+    @aws_subscribe(mutations: ["fireEventsByNode"])
 
   # グループ解散通知を購読
   # dissolveGroup mutation がトリガー

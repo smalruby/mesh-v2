@@ -345,6 +345,33 @@ export class MeshV2Stack extends cdk.Stack {
       `)
     });
 
+    // Function: fireEventsByNode (main logic for batch)
+    const fireEventsByNodeFunction = new appsync.AppsyncFunction(this, 'FireEventsByNodeFunction', {
+      name: 'fireEventsByNode',
+      api: this.api,
+      dataSource: noneDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventsByNode.js'))
+    });
+
+    // Pipeline Resolver: fireEventsByNode (グループ存在確認 → バッチイベント発火)
+    new appsync.Resolver(this, 'FireEventsByNodePipelineResolver', {
+      api: this.api,
+      typeName: 'Mutation',
+      fieldName: 'fireEventsByNode',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      pipelineConfig: [checkGroupExistsFunction, fireEventsByNodeFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
+    });
+
     // Resolvers for Phase 2-4: dissolveGroup with Lambda
 
     // Lambda function for dissolveGroup
