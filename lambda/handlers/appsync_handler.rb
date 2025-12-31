@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+Encoding.default_external = "UTF-8"
+
 require_relative "../use_cases/create_group"
 require_relative "../use_cases/dissolve_group"
 require_relative "../use_cases/leave_group"
