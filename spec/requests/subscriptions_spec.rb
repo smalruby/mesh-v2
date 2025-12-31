@@ -15,7 +15,6 @@ RSpec.describe "Subscriptions API", type: :request do
 
       # 各Subscriptionフィールドの存在確認
       expect(schema_content).to include("onDataUpdateInGroup")
-      expect(schema_content).to include("onEventInGroup")
       expect(schema_content).to include("onGroupDissolve")
     end
 
@@ -25,11 +24,6 @@ RSpec.describe "Subscriptions API", type: :request do
       # onDataUpdateInGroupのディレクティブ確認
       expect(schema_content).to match(
         /onDataUpdateInGroup.*@aws_subscribe\(mutations:\s*\["reportDataByNode"\]\)/m
-      )
-
-      # onEventInGroupのディレクティブ確認
-      expect(schema_content).to match(
-        /onEventInGroup.*@aws_subscribe\(mutations:\s*\["fireEventByNode"\]\)/m
       )
 
       # Note: onGroupDissolveは型の不一致により現在コメントアウト
@@ -45,14 +39,6 @@ RSpec.describe "Subscriptions API", type: :request do
       )
       expect(schema_content).not_to match(
         /onDataUpdateInGroup\([^)]+\):\s*NodeStatus!\s+@aws_subscribe/
-      )
-
-      # onEventInGroup should return Event (nullable, not Event!)
-      expect(schema_content).to match(
-        /onEventInGroup\([^)]+\):\s*Event\s+@aws_subscribe/
-      )
-      expect(schema_content).not_to match(
-        /onEventInGroup\([^)]+\):\s*Event!\s+@aws_subscribe/
       )
 
       # onGroupDissolve should return GroupDissolvePayload (nullable, not GroupDissolvePayload!)
@@ -105,36 +91,6 @@ RSpec.describe "Subscriptions API", type: :request do
         # - onDataUpdateInGroup(groupId: group_id, domain: domain) を購読中のクライアントに
         # - NodeStatus が送信される
         puts "  ✓ reportDataByNode executed - onDataUpdateInGroup should trigger"
-      end
-    end
-
-    context "onEventInGroup の前提条件" do
-      it "fireEventByNode mutation が正常に動作する" do
-        # グループ作成
-        group = create_test_group("Event Test Group", host_id, domain)
-        group_id = group["id"]
-
-        # ノード参加
-        join_test_node(group_id, domain, node1_id)
-
-        # イベント発火
-        query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-        response = execute_graphql(query, {
-          groupId: group_id,
-          domain: domain,
-          nodeId: node1_id,
-          eventName: "test_event",
-          payload: "test payload"
-        })
-
-        expect(response["errors"]).to be_nil
-        expect(response["data"]["fireEventByNode"]).not_to be_nil
-        expect(response["data"]["fireEventByNode"]["name"]).to eq("test_event")
-
-        # Subscription期待動作:
-        # - onEventInGroup(groupId: group_id, domain: domain) を購読中のクライアントに
-        # - Event が送信される
-        puts "  ✓ fireEventByNode executed - onEventInGroup should trigger"
       end
     end
 

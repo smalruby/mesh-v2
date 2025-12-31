@@ -318,33 +318,6 @@ export class MeshV2Stack extends cdk.Stack {
     // None Data Source for event pass-through
     const noneDataSource = this.api.addNoneDataSource('NoneDataSource');
 
-    // Function: fireEventByNode (main logic)
-    const fireEventByNodeFunction = new appsync.AppsyncFunction(this, 'FireEventByNodeFunction', {
-      name: 'fireEventByNode',
-      api: this.api,
-      dataSource: noneDataSource,
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.fireEventByNode.js'))
-    });
-
-    // Pipeline Resolver: fireEventByNode (グループ存在確認 → イベント発火)
-    new appsync.Resolver(this, 'FireEventByNodePipelineResolver', {
-      api: this.api,
-      typeName: 'Mutation',
-      fieldName: 'fireEventByNode',
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      pipelineConfig: [checkGroupExistsFunction, fireEventByNodeFunction],
-      code: appsync.Code.fromInline(`
-        // Pipeline resolver: pass through
-        export function request(ctx) {
-          return {};
-        }
-        export function response(ctx) {
-          return ctx.prev.result;
-        }
-      `)
-    });
-
     // Function: fireEventsByNode (main logic for batch)
     const fireEventsByNodeFunction = new appsync.AppsyncFunction(this, 'FireEventsByNodeFunction', {
       name: 'fireEventsByNode',

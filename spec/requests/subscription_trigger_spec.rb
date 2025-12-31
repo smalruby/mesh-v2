@@ -74,35 +74,6 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
       end
     end
 
-    context "fireEventByNode mutation" do
-      it "groupIdとdomainフィールドを含むEventを返す（subscription filteringに必要）" do
-        group = create_test_group("Event Test Group", host_id, domain)
-        group_id = group["id"]
-        join_test_node(group_id, domain, node_id)
-
-        query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-        response = execute_graphql(query, {
-          groupId: group_id,
-          domain: domain,
-          nodeId: node_id,
-          eventName: "test_event",
-          payload: "test payload"
-        })
-
-        expect(response["errors"]).to be_nil
-        result = response["data"]["fireEventByNode"]
-
-        # Subscription filteringに必要なフィールド
-        expect(result).to have_key("groupId")
-        expect(result).to have_key("domain")
-        expect(result).to have_key("firedByNodeId")
-        expect(result).to have_key("name")
-
-        expect(result["groupId"]).to eq(group_id)
-        expect(result["domain"]).to eq(domain)
-      end
-    end
-
     context "dissolveGroup mutation" do
       it "groupIdとdomainフィールドを含むGroupDissolvePayloadを返す（subscription filteringに必要）" do
         group = create_test_group("Dissolve Test Group", host_id, domain)
@@ -138,11 +109,6 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
         /onDataUpdateInGroup\(groupId:\s*ID!,\s*domain:\s*String!\)/
       ), "onDataUpdateInGroup must accept groupId and domain arguments for filtering"
 
-      # onEventInGroupの引数確認
-      expect(schema_content).to match(
-        /onEventInGroup\(groupId:\s*ID!,\s*domain:\s*String!\)/
-      ), "onEventInGroup must accept groupId and domain arguments for filtering"
-
       # onGroupDissolveの引数確認
       expect(schema_content).to match(
         /onGroupDissolve\(groupId:\s*ID!,\s*domain:\s*String!\)/
@@ -174,11 +140,6 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
       expect(schema_content).to match(
         /onDataUpdateInGroup[^@]+@aws_subscribe\(mutations:\s*\["reportDataByNode"\]\)/m
       ), "onDataUpdateInGroup must subscribe to reportDataByNode mutation"
-
-      # onEventInGroup -> fireEventByNode
-      expect(schema_content).to match(
-        /onEventInGroup[^@]+@aws_subscribe\(mutations:\s*\["fireEventByNode"\]\)/m
-      ), "onEventInGroup must subscribe to fireEventByNode mutation"
 
       # onGroupDissolve -> dissolveGroup
       expect(schema_content).to match(

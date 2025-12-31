@@ -177,14 +177,14 @@ await client.createGroup(name, hostId, domain)
 await client.joinGroup(groupId, nodeId, nodeName, domain)
 await client.dissolveGroup(groupId, hostId, domain)  // Host only
 await client.reportDataByNode(nodeId, groupId, domain, data)
-await client.fireEventByNode(nodeId, groupId, domain, eventName, payload)
+await client.fireEventsByNode(nodeId, groupId, domain, events)
 
 // Queries
 await client.listGroupsByDomain(domain)
 
 // Subscriptions (WebSocket via AppSync)
 client.subscribeToDataUpdates(groupId, domain, callback)
-client.subscribeToEvents(groupId, domain, callback)
+client.subscribeToBatchEvents(groupId, domain, callback)
 client.subscribeToGroupDissolve(groupId, domain, callback)  // Real-time group dissolution detection
 ```
 
@@ -281,14 +281,14 @@ The prototype has the following implementation status:
 1. **Implemented WebSocket Subscriptions**
    - ✅ `subscribeToGroupDissolve()` - Real-time group dissolution detection (Phase 2-4)
    - ✅ `subscribeToDataUpdates()` - Real-time sensor data updates (Phase 2-2)
-   - ✅ `subscribeToEvents()` - Real-time event notifications (Phase 2-2)
+   - ✅ `subscribeToBatchEvents()` - Real-time batch event notifications (Phase 2-2)
 
 2. **Backend API Status**
    - ✅ `createGroup` - Fully implemented and working
    - ✅ `joinGroup` - Fully implemented and working
    - ✅ `dissolveGroup` - Fully implemented with automatic member notification
    - ✅ `reportDataByNode` - Fully implemented with group existence validation
-   - ✅ `fireEventByNode` - Fully implemented with group existence validation
+   - ✅ `fireEventsByNode` - Fully implemented with group existence validation
 
 3. **Display Features**
    - ✅ "Other Nodes Data" panel displays real-time sensor data from group members
@@ -411,25 +411,6 @@ mutation ReportDataByNode(
     nodeId groupId data { key value } timestamp
   }
 }
-
-# Fire Event
-mutation FireEventByNode(
-  $nodeId: ID!
-  $groupId: ID!
-  $domain: String!
-  $eventName: String!
-  $payload: String
-) {
-  fireEventByNode(
-    nodeId: $nodeId
-    groupId: $groupId
-    domain: $domain
-    eventName: $eventName
-    payload: $payload
-  ) {
-    eventName firedByNodeId groupId payload firedAt
-  }
-}
 ```
 
 ### GraphQL Queries
@@ -453,10 +434,15 @@ subscription OnDataUpdateInGroup($groupId: ID!, $domain: String!) {
   }
 }
 
-# Subscribe to Events
-subscription OnEventInGroup($groupId: ID!, $domain: String!) {
-  onEventInGroup(groupId: $groupId, domain: $domain) {
-    eventName firedByNodeId groupId payload firedAt
+# Subscribe to Batch Events
+subscription OnBatchEventInGroup($groupId: ID!, $domain: String!) {
+  onBatchEventInGroup(groupId: $groupId, domain: $domain) {
+    events {
+      name
+      firedByNodeId
+      payload
+      timestamp
+    }
   }
 }
 

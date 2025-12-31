@@ -109,62 +109,6 @@ RSpec.describe "Subscription E2E Test", type: :request do
     end
   end
 
-  describe "fireEventByNode mutation triggers onEventInGroup subscription" do
-    it "イベント送信時にsubscriptionで通知を受信する" do
-      # Setup
-      group = create_test_group("Event E2E Test", host_id, domain)
-      group_id = group["id"]
-      join_test_node(group_id, domain, node_id)
-
-      puts "\n[Test] Testing fireEventByNode subscription..."
-
-      subscription_query = <<~GRAPHQL
-        subscription OnEventInGroup($groupId: ID!, $domain: String!) {
-          onEventInGroup(groupId: $groupId, domain: $domain) {
-            name
-            firedByNodeId
-            groupId
-            domain
-            payload
-            timestamp
-          }
-        }
-      GRAPHQL
-
-      mutation_query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-
-      received_data = subscription_helper.subscribe_and_execute(
-        subscription_query,
-        {groupId: group_id, domain: domain},
-        wait_time: 2,
-        timeout: 15
-      ) do
-        puts "[Test] Firing event..."
-
-        response = execute_graphql(mutation_query, {
-          groupId: group_id,
-          domain: domain,
-          nodeId: node_id,
-          eventName: "test_e2e_event",
-          payload: "E2E test payload"
-        })
-
-        expect(response["errors"]).to be_nil
-        puts "[Test] Event fired successfully"
-      end
-
-      # Verify
-      expect(received_data).not_to be_empty
-      event_data = received_data.first["onEventInGroup"]
-      expect(event_data).not_to be_nil
-      expect(event_data["name"]).to eq("test_e2e_event")
-      expect(event_data["groupId"]).to eq(group_id)
-      expect(event_data["domain"]).to eq(domain)
-
-      puts "✓ Event subscription test passed!"
-    end
-  end
-
   describe "dissolveGroup mutation triggers onGroupDissolve subscription" do
     it "グループ解散時に購読者に通知が届く" do
       # Setup
