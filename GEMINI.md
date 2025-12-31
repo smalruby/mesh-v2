@@ -59,12 +59,22 @@ npm run build
     ```
 -   **Lambda Logic Tests (RSpec):**
     ```bash
-    bundle exec rspec
+    # Unit tests
+    bundle exec rspec spec/unit
+
+    # Integration tests (requires environment variables)
+    # See below for how to obtain these values
+    APPSYNC_ENDPOINT=... APPSYNC_API_KEY=... bundle exec rspec spec/requests
     ```
 -   **Linting (Standard Ruby):**
     ```bash
     bundle exec standardrb
     ```
+
+**Note on Integration Tests:**
+Request specs (`spec/requests`) require `APPSYNC_ENDPOINT` and `APPSYNC_API_KEY` environment variables. These values are displayed in the "Outputs" section after a successful deployment to the `stg` (or `stg2`) environment:
+- `APPSYNC_ENDPOINT`: Found as `MeshV2Stack-stg.GraphQLApiEndpoint`
+- `APPSYNC_API_KEY`: Found as `MeshV2Stack-stg.GraphQLApiKey`
 
 ### Deployment
 Deployment is managed via CDK and separated by `stage` context (`stg` or `prod`).
