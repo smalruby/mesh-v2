@@ -1,6 +1,9 @@
-require_relative "../domain/group"
-require "securerandom"
-require "time"
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require_relative '../domain/group'
+require 'securerandom'
+require 'time'
 
 # CreateGroup Use Case
 # ビジネスロジック - グループ作成の処理フローを管理

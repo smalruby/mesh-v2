@@ -1,11 +1,15 @@
-require_relative "../domain/group"
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require 'aws-sdk-dynamodb'
+require_relative '../domain/group'
 
 # DynamoDB Repository
 # データアクセス層 - DynamoDBとの通信を担当
 class DynamoDBRepository
   def initialize(dynamodb_client = nil, table_name = nil)
     @dynamodb = dynamodb_client
-    @table_name = table_name || ENV["DYNAMODB_TABLE_NAME"] || "MeshV2Table-stg"
+    @table_name = table_name || ENV['DYNAMODB_TABLE_NAME'] || 'MeshV2Table-stg'
   end
 
   # hostId + domain でグループを検索
@@ -17,16 +21,16 @@ class DynamoDBRepository
     # FilterExpression: hostId = :hostId
     result = @dynamodb.query(
       table_name: @table_name,
-      key_condition_expression: "pk = :pk AND begins_with(sk, :sk_prefix)",
+      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
       expression_attribute_values: {
-        ":pk" => "DOMAIN##{domain}",
-        ":sk_prefix" => "GROUP#",
-        ":hostId" => host_id
+        ':pk' => "DOMAIN##{domain}",
+        ':sk_prefix' => 'GROUP#',
+        ':hostId' => host_id
       },
-      filter_expression: "hostId = :hostId"
+      filter_expression: 'hostId = :hostId'
     )
 
-    items = result.items.select { |item| item["sk"].end_with?("#METADATA") }
+    items = result.items.select { |item| item['sk'].to_s.dup.force_encoding('UTF-8').end_with?('#METADATA') }
     return nil if items.empty?
 
     item_to_group(items.first)
@@ -44,16 +48,16 @@ class DynamoDBRepository
     @dynamodb.put_item(
       table_name: @table_name,
       item: {
-        "pk" => "DOMAIN##{group.domain}",
-        "sk" => "GROUP##{group.id}#METADATA",
-        "id" => group.id,
-        "domain" => group.domain,
-        "fullId" => group.full_id,
-        "name" => group.name,
-        "hostId" => group.host_id,
-        "createdAt" => group.created_at,
-        "gsi_pk" => "GROUP##{group.id}",
-        "gsi_sk" => "DOMAIN##{group.domain}"
+        'pk' => "DOMAIN##{group.domain}",
+        'sk' => "GROUP##{group.id}#METADATA",
+        'id' => group.id,
+        'domain' => group.domain,
+        'fullId' => group.full_id,
+        'name' => group.name,
+        'hostId' => group.host_id,
+        'createdAt' => group.created_at,
+        'gsi_pk' => "GROUP##{group.id}",
+        'gsi_sk' => "DOMAIN##{group.domain}"
       }
     )
     true
@@ -69,8 +73,8 @@ class DynamoDBRepository
     result = @dynamodb.get_item(
       table_name: @table_name,
       key: {
-        "pk" => "DOMAIN##{domain}",
-        "sk" => "GROUP##{group_id}#METADATA"
+        'pk' => "DOMAIN##{domain}",
+        'sk' => "GROUP##{group_id}#METADATA"
       }
     )
 
@@ -89,33 +93,37 @@ class DynamoDBRepository
     # 1. グループ内の全アイテムを取得
     result = @dynamodb.query(
       table_name: @table_name,
-      key_condition_expression: "pk = :pk AND begins_with(sk, :sk_prefix)",
+      key_condition_expression: 'pk = :pk AND begins_with(sk, :sk_prefix)',
       expression_attribute_values: {
-        ":pk" => "DOMAIN##{domain}",
-        ":sk_prefix" => "GROUP##{group_id}"
+        ':pk' => "DOMAIN##{domain}",
+        ':sk_prefix' => "GROUP##{group_id}"
       }
     )
 
     # 2. 全アイテムを削除
     result.items.each do |item|
+      # UTF-8エンコーディングを明示的に強制（マルチバイト文字対策）
+      pk = item['pk'].to_s.dup.force_encoding('UTF-8')
+      sk = item['sk'].to_s.dup.force_encoding('UTF-8')
+
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
-          "pk" => item["pk"],
-          "sk" => item["sk"]
+          'pk' => pk,
+          'sk' => sk
         }
       )
     end
 
     # 3. 各ノードの所属情報も削除
-    node_items = result.items.select { |item| item["sk"].include?("#NODE#") }
+    node_items = result.items.select { |item| item['sk'].to_s.dup.force_encoding('UTF-8').include?('#NODE#') }
     node_items.each do |item|
-      node_id = item["nodeId"]
+      node_id = item['nodeId'].to_s.dup.force_encoding('UTF-8')
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
-          "pk" => "NODE##{node_id}",
-          "sk" => "METADATA"
+          'pk' => "NODE##{node_id}",
+          'sk' => 'METADATA'
         }
       )
     end
@@ -138,8 +146,8 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              "pk" => "DOMAIN##{domain}",
-              "sk" => "GROUP##{group_id}#NODE##{node_id}"
+              'pk' => "DOMAIN##{domain.to_s.dup.force_encoding('UTF-8')}",
+              'sk' => "GROUP##{group_id.to_s.dup.force_encoding('UTF-8')}#NODE##{node_id.to_s.dup.force_encoding('UTF-8')}"
             }
           }
         },
@@ -148,8 +156,8 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              "pk" => "NODE##{node_id}",
-              "sk" => "METADATA"
+              'pk' => "NODE##{node_id.to_s.dup.force_encoding('UTF-8')}",
+              'sk' => 'METADATA'
             }
           }
         }
@@ -170,8 +178,8 @@ class DynamoDBRepository
     @dynamodb.delete_item(
       table_name: @table_name,
       key: {
-        "pk" => "DOMAIN##{domain}",
-        "sk" => "GROUP##{group_id}#NODE##{peer_id}#STATUS"
+        'pk' => "DOMAIN##{domain.to_s.dup.force_encoding('UTF-8')}",
+        'sk' => "GROUP##{group_id.to_s.dup.force_encoding('UTF-8')}#NODE##{peer_id.to_s.dup.force_encoding('UTF-8')}#STATUS"
       }
     )
 
@@ -185,11 +193,11 @@ class DynamoDBRepository
 
   def item_to_group(item)
     Group.new(
-      id: item["id"],
-      name: item["name"],
-      host_id: item["hostId"],
-      domain: item["domain"],
-      created_at: item["createdAt"]
+      id: item['id'].to_s.dup.force_encoding('UTF-8'),
+      name: item['name'].to_s.dup.force_encoding('UTF-8'),
+      host_id: item['hostId'].to_s.dup.force_encoding('UTF-8'),
+      domain: item['domain'].to_s.dup.force_encoding('UTF-8'),
+      created_at: item['createdAt'].to_s.dup.force_encoding('UTF-8')
     )
   end
 end

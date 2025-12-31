@@ -1,4 +1,7 @@
-require "time"
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require 'time'
 
 # LeaveGroup Use Case
 # ビジネスロジック - ピアがグループから退出する処理フローを管理
@@ -14,7 +17,7 @@ class LeaveGroupUseCase
     unless peer_removed
       return {
         success: false,
-        error: "Failed to remove peer from group",
+        error: 'Failed to remove peer from group',
         peer_id: peer_id,
         group_id: group_id,
         domain: domain
@@ -27,7 +30,7 @@ class LeaveGroupUseCase
     unless data_deleted
       return {
         success: false,
-        error: "Failed to delete peer data",
+        error: 'Failed to delete peer data',
         peer_id: peer_id,
         group_id: group_id,
         domain: domain
