@@ -1,3 +1,4 @@
+require "aws-sdk-dynamodb"
 require_relative "../domain/group"
 
 # DynamoDB Repository
@@ -98,11 +99,15 @@ class DynamoDBRepository
 
     # 2. 全アイテムを削除
     result.items.each do |item|
+      # UTF-8エンコーディングを明示的に強制（マルチバイト文字対策）
+      pk = item["pk"]
+      sk = item["sk"]
+
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
-          "pk" => item["pk"],
-          "sk" => item["sk"]
+          "pk" => pk,
+          "sk" => sk
         }
       )
     end

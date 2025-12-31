@@ -381,6 +381,8 @@ export class MeshV2Stack extends cdk.Stack {
       handler: 'handlers/appsync_handler.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
       environment: {
+        LANG: 'en_US.UTF-8',
+        LC_ALL: 'en_US.UTF-8',
         DYNAMODB_TABLE_NAME: this.table.tableName,
         MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
         MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30',

@@ -1,3 +1,5 @@
+Encoding.default_external = "UTF-8"
+
 require_relative "../use_cases/create_group"
 require_relative "../use_cases/dissolve_group"
 require_relative "../use_cases/leave_group"
@@ -25,7 +27,7 @@ def lambda_handler(event:, context:)
   else
     raise StandardError, "Unknown field: #{field_name}"
   end
-  # Note: エラーはAppSyncに伝播させる（rescue しない）
+  # NOTE: エラーはAppSyncに伝播させる（rescue しない）
   # AppSyncが自動的にGraphQLエラーに変換する
 end
 
@@ -77,9 +79,7 @@ def handle_leave_group(arguments)
   )
 
   # エラーハンドリング
-  unless result[:success]
-    raise StandardError, result[:error]
-  end
+  raise StandardError, result[:error] unless result[:success]
 
   # AppSync形式にフォーマット
   format_leave_group_response(result)
