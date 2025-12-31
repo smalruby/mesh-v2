@@ -17,9 +17,10 @@ RSpec.describe "Group Existence Validation", type: :request do
         })
 
         # エラーレスポンス検証
-        # joinGroup uses ConditionCheck which returns DynamoDB error message
+        # Pipeline resolver with checkGroupExists returns custom error message
         expect(response["errors"]).not_to be_nil
-        expect(response["errors"][0]["message"]).to include("ConditionalCheckFailed")
+        expect(response["errors"][0]["message"]).to include("not found")
+        expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
       end
     end
 
@@ -47,9 +48,9 @@ RSpec.describe "Group Existence Validation", type: :request do
         })
 
         # エラーレスポンス検証
-        # ConditionCheck failed returns DynamoDB error message
         expect(join_response["errors"]).not_to be_nil
-        expect(join_response["errors"][0]["message"]).to include("ConditionalCheckFailed")
+        expect(join_response["errors"][0]["message"]).to include("not found")
+        expect(join_response["errors"][0]["errorType"]).to eq("GroupNotFound")
       end
     end
   end
@@ -138,7 +139,8 @@ RSpec.describe "Group Existence Validation", type: :request do
         nodeId: new_node_id
       })
       expect(join_response["errors"]).not_to be_nil
-      expect(join_response["errors"][0]["message"]).to include("ConditionalCheckFailed")
+      expect(join_response["errors"][0]["message"]).to include("not found")
+      expect(join_response["errors"][0]["errorType"]).to eq("GroupNotFound")
 
       # データ報告を試みる（エラーになるべき）
       report_query = File.read(File.join(__dir__, "../fixtures/mutations/report_data_by_node.graphql"))
