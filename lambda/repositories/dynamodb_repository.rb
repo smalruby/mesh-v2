@@ -27,10 +27,10 @@ class DynamoDBRepository
         ':sk_prefix' => 'GROUP#',
         ':hostId' => host_id
       },
-      filter_expression: 'hostId = :hostId'
+    filter_expression: 'hostId = :hostId'
     )
 
-    items = result.items.select { |item| item['sk'].to_s.dup.force_encoding('UTF-8').end_with?('#METADATA') }
+    items = result.items.select { |item| force_utf8(item['sk']).end_with?('#METADATA') }
     return nil if items.empty?
 
     item_to_group(items.first)
@@ -103,8 +103,8 @@ class DynamoDBRepository
     # 2. 全アイテムを削除
     result.items.each do |item|
       # UTF-8エンコーディングを明示的に強制（マルチバイト文字対策）
-      pk = item['pk'].to_s.dup.force_encoding('UTF-8')
-      sk = item['sk'].to_s.dup.force_encoding('UTF-8')
+      pk = force_utf8(item['pk'])
+      sk = force_utf8(item['sk'])
 
       @dynamodb.delete_item(
         table_name: @table_name,
@@ -116,9 +116,9 @@ class DynamoDBRepository
     end
 
     # 3. 各ノードの所属情報も削除
-    node_items = result.items.select { |item| item['sk'].to_s.dup.force_encoding('UTF-8').include?('#NODE#') }
+    node_items = result.items.select { |item| force_utf8(item['sk']).include?('#NODE#') }
     node_items.each do |item|
-      node_id = item['nodeId'].to_s.dup.force_encoding('UTF-8')
+      node_id = force_utf8(item['nodeId'])
       @dynamodb.delete_item(
         table_name: @table_name,
         key: {
@@ -146,8 +146,8 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              'pk' => "DOMAIN##{domain.to_s.dup.force_encoding('UTF-8')}",
-              'sk' => "GROUP##{group_id.to_s.dup.force_encoding('UTF-8')}#NODE##{node_id.to_s.dup.force_encoding('UTF-8')}"
+              'pk' => "DOMAIN##{force_utf8(domain)}",
+              'sk' => "GROUP##{force_utf8(group_id)}#NODE##{force_utf8(node_id)}"
             }
           }
         },
@@ -156,7 +156,7 @@ class DynamoDBRepository
           delete: {
             table_name: @table_name,
             key: {
-              'pk' => "NODE##{node_id.to_s.dup.force_encoding('UTF-8')}",
+              'pk' => "NODE##{force_utf8(node_id)}",
               'sk' => 'METADATA'
             }
           }
@@ -178,8 +178,8 @@ class DynamoDBRepository
     @dynamodb.delete_item(
       table_name: @table_name,
       key: {
-        'pk' => "DOMAIN##{domain.to_s.dup.force_encoding('UTF-8')}",
-        'sk' => "GROUP##{group_id.to_s.dup.force_encoding('UTF-8')}#NODE##{peer_id.to_s.dup.force_encoding('UTF-8')}#STATUS"
+        'pk' => "DOMAIN##{force_utf8(domain)}",
+        'sk' => "GROUP##{force_utf8(group_id)}#NODE##{force_utf8(peer_id)}#STATUS"
       }
     )
 
@@ -193,11 +193,15 @@ class DynamoDBRepository
 
   def item_to_group(item)
     Group.new(
-      id: item['id'].to_s.dup.force_encoding('UTF-8'),
-      name: item['name'].to_s.dup.force_encoding('UTF-8'),
-      host_id: item['hostId'].to_s.dup.force_encoding('UTF-8'),
-      domain: item['domain'].to_s.dup.force_encoding('UTF-8'),
-      created_at: item['createdAt'].to_s.dup.force_encoding('UTF-8')
+      id: force_utf8(item['id']),
+      name: force_utf8(item['name']),
+      host_id: force_utf8(item['hostId']),
+      domain: force_utf8(item['domain']),
+      created_at: force_utf8(item['createdAt'])
     )
+  end
+
+  def force_utf8(str)
+    str.to_s.dup.force_encoding('UTF-8')
   end
 end
