@@ -1,29 +1,28 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
-require_relative '../use_cases/create_group'
-require_relative '../use_cases/dissolve_group'
-require_relative '../use_cases/leave_group'
-require_relative '../use_cases/create_domain'
-require_relative '../repositories/dynamodb_repository'
-require 'aws-sdk-dynamodb'
-require 'json'
+require_relative "../use_cases/create_group"
+require_relative "../use_cases/dissolve_group"
+require_relative "../use_cases/leave_group"
+require_relative "../use_cases/create_domain"
+require_relative "../repositories/dynamodb_repository"
+require "aws-sdk-dynamodb"
+require "json"
 
 # AppSync Lambda Handler
 # Adapter層 - AppSyncイベントの受け取りと値抽出のみ
 def lambda_handler(event:, context:)
   # AppSyncイベントから値を抽出
-  field_name = event['info']['fieldName']
-  arguments = event['arguments']
+  field_name = event["info"]["fieldName"]
+  arguments = event["arguments"]
 
   case field_name
-  when 'createDomain'
+  when "createDomain"
     handle_create_domain(event)
-  when 'createGroup'
+  when "createGroup"
     handle_create_group(arguments)
-  when 'dissolveGroup'
+  when "dissolveGroup"
     handle_dissolve_group(arguments)
-  when 'leaveGroup'
+  when "leaveGroup"
     handle_leave_group(arguments)
   else
     raise StandardError, "Unknown field: #{field_name}"
@@ -34,15 +33,15 @@ end
 
 def handle_create_group(arguments)
   # DynamoDBクライアントとリポジトリの初期化
-  dynamodb = Aws::DynamoDB::Client.new(region: ENV['AWS_REGION'] || 'ap-northeast-1')
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV["AWS_REGION"] || "ap-northeast-1")
   repository = DynamoDBRepository.new(dynamodb)
 
   # ユースケースの実行
   use_case = CreateGroupUseCase.new(repository)
   group = use_case.execute(
-    name: arguments['name'],
-    host_id: arguments['hostId'],
-    domain: arguments['domain']
+    name: arguments["name"],
+    host_id: arguments["hostId"],
+    domain: arguments["domain"]
   )
 
   # AppSync形式にフォーマット
@@ -51,15 +50,15 @@ end
 
 def handle_dissolve_group(arguments)
   # DynamoDBクライアントとリポジトリの初期化
-  dynamodb = Aws::DynamoDB::Client.new(region: ENV['AWS_REGION'] || 'ap-northeast-1')
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV["AWS_REGION"] || "ap-northeast-1")
   repository = DynamoDBRepository.new(dynamodb)
 
   # ユースケースの実行
   use_case = DissolveGroupUseCase.new(repository)
   result = use_case.execute(
-    group_id: arguments['groupId'],
-    domain: arguments['domain'],
-    host_id: arguments['hostId']
+    group_id: arguments["groupId"],
+    domain: arguments["domain"],
+    host_id: arguments["hostId"]
   )
 
   # AppSync形式にフォーマット
@@ -68,15 +67,15 @@ end
 
 def handle_leave_group(arguments)
   # DynamoDBクライアントとリポジトリの初期化
-  dynamodb = Aws::DynamoDB::Client.new(region: ENV['AWS_REGION'] || 'ap-northeast-1')
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV["AWS_REGION"] || "ap-northeast-1")
   repository = DynamoDBRepository.new(dynamodb)
 
   # ユースケースの実行
   use_case = LeaveGroupUseCase.new(repository)
   result = use_case.execute(
-    group_id: arguments['groupId'],
-    domain: arguments['domain'],
-    peer_id: arguments['nodeId']
+    group_id: arguments["groupId"],
+    domain: arguments["domain"],
+    peer_id: arguments["nodeId"]
   )
 
   # エラーハンドリング
@@ -89,16 +88,16 @@ end
 def handle_create_domain(event)
   # AppSync + API Key の場合、identity.sourceIp は空になることがある
   # そのため、X-Forwarded-For ヘッダーから取得を試みる
-  headers = event.dig('request', 'headers') || {}
-  x_forwarded_for = headers['x-forwarded-for']
+  headers = event.dig("request", "headers") || {}
+  x_forwarded_for = headers["x-forwarded-for"]
 
   source_ip = if x_forwarded_for
-                # X-Forwarded-For は "client, proxy1, proxy2" 形式なので最初の要素を取得
-                x_forwarded_for.split(',').first.strip
-              else
-                # fallback: identity.sourceIp (IAM認証などでは設定される)
-                event.dig('identity', 'sourceIp')&.first
-              end
+    # X-Forwarded-For は "client, proxy1, proxy2" 形式なので最初の要素を取得
+    x_forwarded_for.split(",").first.strip
+  else
+    # fallback: identity.sourceIp (IAM認証などでは設定される)
+    event.dig("identity", "sourceIp")&.first
+  end
 
   use_case = CreateDomainUseCase.new
   use_case.execute(source_ip: source_ip)

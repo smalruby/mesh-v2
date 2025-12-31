@@ -61,22 +61,13 @@ npm run build
     ```bash
     bundle exec rspec
     ```
+-   **Linting (Standard Ruby):**
+    ```bash
+    bundle exec standardrb
+    ```
 
 ### Deployment
-Deployment is managed via CDK and separated by `stage` context (`stg` or `prod`).
-
-**Staging (Default):**
-```bash
-npx cdk deploy --context stage=stg
-```
-
-**Production:**
-```bash
-npx cdk deploy --context stage=prod
-```
-
-See `DEPLOYMENT.md` for detailed deployment instructions and verification steps.
-
+...
 ## Development Conventions
 
 -   **Environment Management:** Resources are suffixed with the stage name (e.g., `MeshV2Table-stg`) and tagged appropriately.
@@ -85,9 +76,10 @@ See `DEPLOYMENT.md` for detailed deployment instructions and verification steps.
     -   Implement simple logic using AppSync JS (`js/`).
     -   Implement complex logic using Ruby Lambda (`lambda/`).
 -   **Lambda Runtime:** Uses Ruby 3.4. Ensure local development matches this version.
--   **Testing:**
+-   **Testing & Quality:**
     -   Unit test business logic in Ruby using RSpec.
     -   Unit test infrastructure configuration in TypeScript using Jest.
+    -   **CRITICAL:** All Ruby code MUST pass `standardrb` linting. Run `bundle exec standardrb` before committing.
 
 ## Key Documentation
 -   `README.md`: General project overview.

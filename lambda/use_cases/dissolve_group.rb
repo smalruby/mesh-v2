@@ -1,7 +1,6 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
-require 'time'
+require "time"
 
 # DissolveGroup Use Case
 # アプリケーション層 - グループ解散のビジネスロジック
@@ -37,8 +36,8 @@ class DissolveGroupUseCase
   private
 
   def validate_input!(group_id, domain, host_id)
-    raise ArgumentError, 'groupId is required' if group_id.nil? || group_id.to_s.empty?
-    raise ArgumentError, 'domain is required' if domain.nil? || domain.to_s.empty?
-    raise ArgumentError, 'hostId is required' if host_id.nil? || host_id.to_s.empty?
+    raise ArgumentError, "groupId is required" if group_id.nil? || group_id.to_s.empty?
+    raise ArgumentError, "domain is required" if domain.nil? || domain.to_s.empty?
+    raise ArgumentError, "hostId is required" if host_id.nil? || host_id.to_s.empty?
   end
 end

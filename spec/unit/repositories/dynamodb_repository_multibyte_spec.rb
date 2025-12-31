@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-# encoding: UTF-8
 
 require "spec_helper"
 require_relative "../../../lambda/repositories/dynamodb_repository"
@@ -28,16 +27,16 @@ RSpec.describe DynamoDBRepository do
           "pk" => "DOMAIN##{domain}",
           "sk" => "GROUP##{group_id}#NODE#ノード001#STATUS",
           "nodeId" => "ノード001",
-          "data" => [{ "key" => "ホストグローバル", "value" => "13" }]
+          "data" => [{"key" => "ホストグローバル", "value" => "13"}]
         }
       ]
       mock_result = double("QueryResult", items: mock_items)
-      
+
       expect(dynamodb_client).to receive(:query).and_return(mock_result)
-      
+
       # Expect delete_item for each item and each node metadata
       expect(dynamodb_client).to receive(:delete_item).exactly(3).times
-      
+
       result = repository.dissolve_group(group_id, domain)
       expect(result).to be true
     end
@@ -53,7 +52,7 @@ RSpec.describe DynamoDBRepository do
         "createdAt" => Time.now.utc.iso8601
       }
       mock_result = double("GetItemResult", item: mock_item)
-      
+
       expect(dynamodb_client).to receive(:get_item).with(
         table_name: table_name,
         key: {
@@ -61,9 +60,9 @@ RSpec.describe DynamoDBRepository do
           "sk" => "GROUP##{group_id}#METADATA"
         }
       ).and_return(mock_result)
-      
+
       group = repository.find_group(group_id, domain)
-      
+
       expect(group.id).to eq(group_id)
       expect(group.name).to eq("テストグループ")
       expect(group.domain).to eq(domain)
