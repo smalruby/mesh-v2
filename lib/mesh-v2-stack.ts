@@ -109,6 +109,15 @@ export class MeshV2Stack extends cdk.Stack {
       this.table
     );
 
+    // Function: checkGroupExists (共通のグループ存在確認)
+    const checkGroupExistsFunction = new appsync.AppsyncFunction(this, 'CheckGroupExistsFunction', {
+      name: 'checkGroupExists',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/checkGroupExists.js'))
+    });
+
     // Grant additional permissions for TransactWriteItems
     this.table.grantReadWriteData(dynamoDbDataSource.grantPrincipal);
 
@@ -216,24 +225,32 @@ export class MeshV2Stack extends cdk.Stack {
       `)
     });
 
-    // Mutation: joinGroup
-    dynamoDbDataSource.createResolver('JoinGroupResolver', {
-      typeName: 'Mutation',
-      fieldName: 'joinGroup',
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.joinGroup.js'))
-    });
-
-    // Resolvers for Phase 2-2: High-Frequency Mutations
-
-    // Function: checkGroupExists (共通のグループ存在確認)
-    const checkGroupExistsFunction = new appsync.AppsyncFunction(this, 'CheckGroupExistsFunction', {
-      name: 'checkGroupExists',
+    // Mutation: joinGroup (Pipeline Resolver for consistency and expiresAt validation)
+    const joinGroupFunction = new appsync.AppsyncFunction(this, 'JoinGroupFunction', {
+      name: 'joinGroupFunction',
       api: this.api,
       dataSource: dynamoDbDataSource,
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/checkGroupExists.js'))
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/functions/joinGroupFunction.js'))
     });
+
+    this.api.createResolver('JoinGroupResolver', {
+      typeName: 'Mutation',
+      fieldName: 'joinGroup',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      pipelineConfig: [checkGroupExistsFunction, joinGroupFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
+    });
+
+    // Resolvers for Phase 2-2: High-Frequency Mutations
 
     // Mutation: renewHeartbeat
     const renewHeartbeatFunction = new appsync.AppsyncFunction(this, 'RenewHeartbeatFunction', {

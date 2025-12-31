@@ -1,5 +1,6 @@
-// joinGroup Mutation Resolver
+// joinGroup Function
 // ノードをグループに参加させる（TransactWriteItemsでアトミック実行）
+// checkGroupExists Pipeline Function の後に実行されることを想定
 
 import { util } from '@aws-appsync/utils';
 
@@ -15,18 +16,6 @@ export function request(ctx) {
   return {
     operation: 'TransactWriteItems',
     transactItems: [
-      // 0. グループの存在確認 (ConditionCheck)
-      {
-        table: ctx.env.TABLE_NAME,
-        operation: 'ConditionCheck',
-        key: util.dynamodb.toMapValues({
-          pk: `DOMAIN#${domain}`,
-          sk: `GROUP#${groupId}#METADATA`
-        }),
-        condition: {
-          expression: 'attribute_exists(pk)'
-        }
-      },
       // 1. グループ内のノード情報を追加
       {
         table: ctx.env.TABLE_NAME,
