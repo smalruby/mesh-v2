@@ -167,15 +167,6 @@ type Mutation {
     data: [SensorDataInput!]!
   ): NodeStatus
 
-  # Note: nullableにすることでSubscription型と一致させる
-  fireEventByNode(
-    groupId: ID!
-    domain: String!
-    nodeId: ID!
-    eventName: String!
-    payload: String
-  ): Event
-
   # 複数イベントを一度に送信（1回のSubscriptionを発火）
   fireEventsByNode(
     groupId: ID!
@@ -193,12 +184,6 @@ type Subscription {
   # Note: nullableにすることで、NodeStatusが存在しない場合でもエラーを防ぐ
   onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus
     @aws_subscribe(mutations: ["reportDataByNode"])
-
-  # グループ内のイベントを購読
-  # fireEventByNode mutation がトリガー
-  # Note: nullableにすることで、Eventが存在しない場合でもエラーを防ぐ
-  onEventInGroup(groupId: ID!, domain: String!): Event
-    @aws_subscribe(mutations: ["fireEventByNode"])
 
   # グループ内のバッチイベントを購読
   # fireEventsByNode mutation がトリガー

@@ -79,7 +79,7 @@ subscription.subscribe({
 
 ### Best Practices
 
-1. **Use Batching for High-Frequency Events**: Prefer `fireEventsByNode` over `fireEventByNode` when sending multiple events in a short period.
+1. **Use Batching for Events**: Use `fireEventsByNode` for all event communications to optimize subscription costs and ensure timing accuracy.
 2. **Include Timestamps**: Always provide accurate `firedAt` timestamps to ensure correct timing reproduction on the receiver side.
 3. **Payload Size**: Keep individual event payloads small. Although the batch limit is 1,000 events, large payloads might hit the 240 KB limit sooner.
 

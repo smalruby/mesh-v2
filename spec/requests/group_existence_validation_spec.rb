@@ -110,59 +110,6 @@ RSpec.describe "Group Existence Validation", type: :request do
     end
   end
 
-  describe "fireEventByNode mutation" do
-    context "グループが存在しない場合" do
-      it "エラーを返す" do
-        query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-        response = execute_graphql(query, {
-          groupId: "non-existent-group",
-          domain: domain,
-          nodeId: node_id,
-          eventName: "test-event",
-          payload: "test payload"
-        })
-
-        # エラーレスポンス検証
-        # Pipeline resolver with checkGroupExists returns custom error message
-        expect(response["errors"]).not_to be_nil
-        expect(response["errors"][0]["message"]).to include("not found")
-        expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
-      end
-    end
-
-    context "グループが削除された後" do
-      it "エラーを返す" do
-        # グループを作成してノードを参加させる
-        group = create_test_group(group_name, host_id, domain)
-        group_id = group["id"]
-        join_test_node(group_id, domain, node_id)
-
-        # グループを削除
-        dissolve_query = File.read(File.join(__dir__, "../fixtures/mutations/dissolve_group.graphql"))
-        dissolve_response = execute_graphql(dissolve_query, {
-          groupId: group_id,
-          domain: domain,
-          hostId: host_id
-        })
-        expect(dissolve_response["errors"]).to be_nil
-
-        # 削除されたグループにイベント発火を試みる
-        fire_query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-        fire_response = execute_graphql(fire_query, {
-          groupId: group_id,
-          domain: domain,
-          nodeId: node_id,
-          eventName: "test-event",
-          payload: "test payload"
-        })
-
-        # エラーレスポンス検証
-        expect(fire_response["errors"]).not_to be_nil
-        expect(fire_response["errors"][0]["message"]).to include("not found")
-      end
-    end
-  end
-
   describe "E2E: dissolveGroup後のすべてのmutation検証" do
     it "dissolveGroup後、すべてのグループ操作がエラーを返す" do
       # グループを作成
@@ -203,18 +150,6 @@ RSpec.describe "Group Existence Validation", type: :request do
       })
       expect(report_response["errors"]).not_to be_nil
       expect(report_response["errors"][0]["message"]).to include("not found")
-
-      # イベント発火を試みる（エラーになるべき）
-      fire_query = File.read(File.join(__dir__, "../fixtures/mutations/fire_event_by_node.graphql"))
-      fire_response = execute_graphql(fire_query, {
-        groupId: group_id,
-        domain: domain,
-        nodeId: node_id,
-        eventName: "test-event",
-        payload: nil
-      })
-      expect(fire_response["errors"]).not_to be_nil
-      expect(fire_response["errors"][0]["message"]).to include("not found")
     end
   end
 end

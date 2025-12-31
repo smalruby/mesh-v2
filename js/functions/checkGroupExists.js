@@ -1,6 +1,6 @@
 // checkGroupExists Pipeline Before Function
 // グループの存在確認を行う共通Function
-// reportDataByNode, fireEventByNode の前処理として使用
+// reportDataByNode, fireEventsByNode の前処理として使用
 
 import { util } from '@aws-appsync/utils';
 

@@ -44,24 +44,23 @@ subscription {
 
 ---
 
-### 2. onEventInGroup
+### 2. onBatchEventInGroup
 
-**Purpose**: リアルタイムでグループ内のイベント発火を購読
+**Purpose**: 複数イベントを一度に送信（1回のSubscriptionを発火）
 
-**Trigger**: `fireEventByNode` mutation
+**Trigger**: `fireEventsByNode` mutation
 
 **Parameters**:
 - `groupId: ID!` - 購読するグループID
 - `domain: String!` - グループのドメイン
 
-**Returns**: `Event!`
+**Returns**: `BatchEvent!`
 ```graphql
 {
-  name: String!
+  events: [Event!]!
   firedByNodeId: ID!
   groupId: ID!
   domain: String!
-  payload: String
   timestamp: AWSDateTime!
 }
 ```
@@ -69,11 +68,13 @@ subscription {
 **Usage Example**:
 ```graphql
 subscription {
-  onEventInGroup(groupId: "group-123", domain: "example.com") {
-    name
-    firedByNodeId
-    payload
-    timestamp
+  onBatchEventInGroup(groupId: "group-123", domain: "example.com") {
+    events {
+      name
+      firedByNodeId
+      payload
+      timestamp
+    }
   }
 }
 ```
@@ -131,7 +132,7 @@ All subscriptions filter by `groupId` and `domain`:
 Integration tests verify:
 - ✅ GraphQL schema contains Subscription type
 - ✅ @aws_subscribe directives are correctly defined
-- ✅ Mutations (reportDataByNode, fireEventByNode, dissolveGroup) work correctly
+- ✅ Mutations (reportDataByNode, fireEventsByNode, dissolveGroup) work correctly
 - ✅ Multiple groups can coexist with proper filtering
 - ✅ onGroupDissolve subscription triggers correctly
 
@@ -185,8 +186,8 @@ type Subscription {
   onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus!
     @aws_subscribe(mutations: ["reportDataByNode"])
 
-  onEventInGroup(groupId: ID!, domain: String!): Event!
-    @aws_subscribe(mutations: ["fireEventByNode"])
+  onBatchEventInGroup(groupId: ID!, domain: String!): BatchEvent!
+    @aws_subscribe(mutations: ["fireEventsByNode"])
 }
 ```
 
@@ -259,6 +260,6 @@ AppSync handles subscription logic automatically when using `@aws_subscribe` dir
 
 ---
 
-**Last Updated**: 2025-12-21
+**Last Updated**: 2025-12-31
 **Phase**: 2-4 - Subscription Implementation
-**Status**: ✅ Fully Implemented (3/3 subscriptions)
+**Status**: ✅ Fully Implemented (onDataUpdate, onBatchEvent, onGroupDissolve)

@@ -114,24 +114,6 @@ mutation ReportData {
   }
 }
 
-# イベントの発火
-mutation FireEvent {
-  fireEventByNode(
-    groupId: "group-001"
-    domain: "test-domain"
-    nodeId: "node-001"
-    eventName: "button_pressed"
-    payload: "{\"button\": \"A\", \"count\": 5}"
-  ) {
-    name
-    firedByNodeId
-    groupId
-    domain
-    payload
-    timestamp
-  }
-}
-
 # ============================================
 # Queries（Phase 2でResolver実装後にテスト可能）
 # ============================================
@@ -216,18 +198,6 @@ subscription OnDataUpdate {
   }
 }
 
-# グループ内のイベントを購読
-subscription OnEvent {
-  onEventInGroup(groupId: "group-001", domain: "test-domain") {
-    name
-    firedByNodeId
-    groupId
-    domain
-    payload
-    timestamp
-  }
-}
-
 # グループ解散通知を購読
 subscription OnGroupDissolve {
   onGroupDissolve(groupId: "group-001", domain: "test-domain") {
@@ -247,11 +217,6 @@ subscription OnGroupDissolve {
 # 3. JoinGroup mutation を実行
 # 4. ReportData mutation を実行
 # 5. ListGroupStatuses query で確認
-
-# シナリオ2: イベント通知のテスト
-# 1. Subscription OnEvent を開始
-# 2. 別のタブで FireEvent mutation を実行
-# 3. Subscription でリアルタイム通知を受信
 
 # シナリオ3: Domain自動検出のテスト
 # 1. CreateGroupAutoDetectDomain mutation を実行（domain未指定）

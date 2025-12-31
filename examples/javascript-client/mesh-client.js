@@ -359,35 +359,8 @@ class MeshClient {
   }
 
   /**
-   * Fire an event
-   */
-  async fireEventByNode(nodeId, groupId, domain, eventName, payload) {
-    const query = `
-      mutation FireEventByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $eventName: String!, $payload: String) {
-        fireEventByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, eventName: $eventName, payload: $payload) {
-          name
-          firedByNodeId
-          groupId
-          domain
-          payload
-          timestamp
-        }
-      }
-    `;
-
-    const result = await this.execute(query, {
-      nodeId,
-      groupId,
-      domain: domain || this.domain,
-      eventName,
-      payload
-    });
-
-    return result.fireEventByNode;
-  }
-
-  /**
    * Fire multiple events in a batch
+
    */
   async fireEventsByNode(nodeId, groupId, domain, events) {
     const query = `
@@ -460,58 +433,6 @@ class MeshClient {
       },
       error: (error) => {
         console.error('Subscription error:', error);
-        if (error.errors && error.errors.length > 0) {
-          console.error('GraphQL errors:', error.errors);
-          error.errors.forEach(err => {
-            console.error('- Error:', err.message);
-            if (err.path) console.error('  Path:', err.path);
-            if (err.locations) console.error('  Locations:', err.locations);
-          });
-        }
-      }
-    });
-
-    this.subscriptions.set(subscriptionId, sub);
-
-    return subscriptionId;
-  }
-
-  /**
-   * Subscribe to events in group via WebSocket
-   */
-  subscribeToEvents(groupId, domain, callback) {
-    console.log('Subscription: onEventInGroup', { groupId, domain });
-
-    const subscriptionId = `event-${groupId}`;
-    this.eventHandlers.set(subscriptionId, callback);
-
-    // GraphQL subscription query
-    const subscription = `
-      subscription OnEventInGroup($groupId: ID!, $domain: String!) {
-        onEventInGroup(groupId: $groupId, domain: $domain) {
-          name
-          firedByNodeId
-          groupId
-          domain
-          payload
-          timestamp
-        }
-      }
-    `;
-
-    // Subscribe using Amplify
-    const sub = this.graphqlClient.graphql({
-      query: subscription,
-      variables: { groupId, domain: domain || this.domain }
-    }).subscribe({
-      next: ({ data }) => {
-        console.log('Event received:', data);
-        if (callback && data && data.onEventInGroup) {
-          callback(data.onEventInGroup);
-        }
-      },
-      error: (error) => {
-        console.error('Event subscription error:', error);
         if (error.errors && error.errors.length > 0) {
           console.error('GraphQL errors:', error.errors);
           error.errors.forEach(err => {

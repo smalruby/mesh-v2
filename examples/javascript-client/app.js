@@ -16,7 +16,6 @@ const state = {
   sessionTimerId: null,
   heartbeatTimerId: null,
   dataSubscriptionId: null,
-  eventSubscriptionId: null,
   batchEventSubscriptionId: null,
   dissolveSubscriptionId: null,
   sensorData: {
@@ -119,7 +118,6 @@ function setupEventListeners() {
   document.getElementById('disconnectBtn').addEventListener('click', handleDisconnect);
 
   // Events
-  document.getElementById('sendEventBtn').addEventListener('click', handleSendEvent);
   document.getElementById('sendBatchEventBtn').addEventListener('click', handleSendBatchEvent);
   document.getElementById('clearEventsBtn').addEventListener('click', handleClearEvents);
 }
@@ -423,13 +421,6 @@ async function handleJoinGroup() {
       displayOtherNodesData
     );
 
-    // Subscribe to events in group
-    state.eventSubscriptionId = state.client.subscribeToEvents(
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      handleEventReceived
-    );
-
     // Subscribe to batch events in group
     state.batchEventSubscriptionId = state.client.subscribeToBatchEvents(
       state.currentGroup.id,
@@ -477,12 +468,6 @@ async function handleLeaveGroup() {
     if (state.dataSubscriptionId) {
       state.client.unsubscribe(state.dataSubscriptionId);
       state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from events
-    if (state.eventSubscriptionId) {
-      state.client.unsubscribe(state.eventSubscriptionId);
-      state.eventSubscriptionId = null;
     }
 
     // Unsubscribe from batch events
@@ -551,12 +536,6 @@ async function handleDissolveGroup() {
       state.dataSubscriptionId = null;
     }
 
-    // Unsubscribe from events
-    if (state.eventSubscriptionId) {
-      state.client.unsubscribe(state.eventSubscriptionId);
-      state.eventSubscriptionId = null;
-    }
-
     // Unsubscribe from batch events
     if (state.batchEventSubscriptionId) {
       state.client.unsubscribe(state.batchEventSubscriptionId);
@@ -621,12 +600,6 @@ async function handleDisconnect() {
     if (state.dataSubscriptionId) {
       state.client.unsubscribe(state.dataSubscriptionId);
       state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from events
-    if (state.eventSubscriptionId) {
-      state.client.unsubscribe(state.eventSubscriptionId);
-      state.eventSubscriptionId = null;
     }
 
     // Unsubscribe from batch events
@@ -743,60 +716,6 @@ async function handleSensorChange(sensorName, value) {
 }
 
 /**
- * Handle send event
- */
-async function handleSendEvent() {
-  const eventName = document.getElementById('eventName').value.trim();
-  const eventPayload = document.getElementById('eventPayload').value.trim();
-
-  if (!eventName) {
-    showError('eventError', 'Please enter an event name');
-    return;
-  }
-
-  if (!state.currentGroup) {
-    showError('eventError', 'Not in a group');
-    return;
-  }
-
-  // Check rate limit
-  if (!eventRateLimiter.canMakeCall()) {
-    showError('eventError', 'Event rate limit exceeded (max 2/sec)');
-    return;
-  }
-
-  try {
-    const result = await state.client.fireEventByNode(
-      state.currentNodeId,
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      eventName,
-      eventPayload || null
-    );
-
-    console.log('Event sent:', result);
-
-    // Note: Event will be added to history via subscription
-    // (avoids duplicate entries for self-sent events)
-
-    showSuccess('eventSuccess', 'Event sent successfully');
-
-    // Clear inputs
-    document.getElementById('eventName').value = '';
-    document.getElementById('eventPayload').value = '';
-
-    // Update rate status
-    updateRateStatus();
-  } catch (error) {
-    showError('eventError', 'Failed to send event: ' + error.message);
-    console.error('Send event error:', error);
-    if (shouldDisconnectOnError(error)) {
-      handleGroupDissolved({ message: 'Connection lost' });
-    }
-  }
-}
-
-/**
  * Handle send 3 events batch
  */
 async function handleSendBatchEvent() {
@@ -875,19 +794,6 @@ function handleClearEvents() {
 }
 
 /**
- * Handle event received from subscription
- */
-function handleEventReceived(event) {
-  console.log('Event received from subscription:', event);
-
-  // Add to event history
-  addEventToHistory(event);
-
-  // Show notification (optional)
-  showSuccess('eventSuccess', `Event received: ${event.name} from ${event.firedByNodeId}`);
-}
-
-/**
  * Handle batch event received from subscription
  */
 function handleBatchEventReceived(batchEvent) {
@@ -913,11 +819,6 @@ function handleGroupDissolved(dissolveData) {
   if (state.dataSubscriptionId) {
     state.client.unsubscribe(state.dataSubscriptionId);
     state.dataSubscriptionId = null;
-  }
-
-  if (state.eventSubscriptionId) {
-    state.client.unsubscribe(state.eventSubscriptionId);
-    state.eventSubscriptionId = null;
   }
 
   if (state.batchEventSubscriptionId) {
@@ -981,9 +882,6 @@ function displayOtherNodesData(statuses) {
 function updateRateStatus() {
   document.getElementById('sensorRateStatus').textContent =
     `${sensorRateLimiter.getCallCount()}/4 per second`;
-
-  document.getElementById('eventRateStatus').textContent =
-    `${eventRateLimiter.getCallCount()}/2 per second`;
 }
 
 /**
@@ -1164,7 +1062,6 @@ function updateUI() {
     leaveBtn.style.display = 'none';
   }
 
-  document.getElementById('sendEventBtn').disabled = !inGroup;
   document.getElementById('sendBatchEventBtn').disabled = !inGroup;
 
   // Update rate status
