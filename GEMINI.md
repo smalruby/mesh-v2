@@ -67,7 +67,20 @@ npm run build
     ```
 
 ### Deployment
-...
+Deployment is managed via CDK and separated by `stage` context (`stg` or `prod`).
+
+**Staging (Default):**
+```bash
+npx cdk deploy --context stage=stg
+```
+
+**Production:**
+```bash
+npx cdk deploy --context stage=prod
+```
+
+See `DEPLOYMENT.md` for detailed deployment instructions and verification steps.
+
 ## Development Conventions
 
 -   **Environment Management:** Resources are suffixed with the stage name (e.g., `MeshV2Table-stg`) and tagged appropriately.

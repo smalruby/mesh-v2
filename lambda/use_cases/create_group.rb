@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require_relative "../domain/group"
 require "securerandom"
 require "time"

@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 # Group Domain Model
 # ドメインモデル - ビジネスルールとバリデーションを持つ
 class Group
