@@ -25,6 +25,7 @@ type Group {
   name: String!
   hostId: ID!       # 作成者ノード ID
   createdAt: AWSDateTime!
+  expiresAt: AWSDateTime!  # グループの有効期限
 }
 ```
 
@@ -32,10 +33,11 @@ type Group {
 
 ```graphql
 type Node {
-  nodeId: ID!
-  groupId: ID!
-  domain: String!
-  joinedAt: AWSDateTime!
+  id: ID!
+  name: String!
+  groupId: ID
+  domain: String  # 所属しているdomain
+  heartbeatIntervalSeconds: Int
 }
 ```
 
@@ -125,11 +127,88 @@ query GetGroup($groupId: ID!, $domain: String!) {
     name
     hostId
     createdAt
+    expiresAt
   }
 }
 ```
 
+### getNodeStatus
+
+ノード ID でノードのステータス（センサーデータ）を取得します。
+
+```graphql
+query GetNodeStatus($nodeId: ID!) {
+  getNodeStatus(nodeId: $nodeId) {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+```
+
+**戻り値**: ノードのセンサーデータ。ノードが存在しない場合は `null`。
+
+### listGroupStatuses
+
+グループ内のすべてのノードのステータスを取得します。
+
+```graphql
+query ListGroupStatuses($groupId: ID!, $domain: String!) {
+  listGroupStatuses(groupId: $groupId, domain: $domain) {
+    nodeId
+    groupId
+    domain
+    data {
+      key
+      value
+    }
+    timestamp
+  }
+}
+```
+
+**用途**: グループ内の全ノードの最新センサーデータを一括取得。
+
+### listNodesInGroup
+
+グループに参加しているすべてのノードを一覧表示します。
+
+```graphql
+query ListNodesInGroup($groupId: ID!, $domain: String!) {
+  listNodesInGroup(groupId: $groupId, domain: $domain) {
+    id
+    name
+    groupId
+    domain
+    heartbeatIntervalSeconds
+  }
+}
+```
+
+**用途**: グループメンバーの一覧取得。
+
 ## Mutations
+
+### createDomain
+
+リクエスト元のソース IP からドメインを生成します。
+
+```graphql
+mutation CreateDomain {
+  createDomain
+}
+```
+
+**戻り値**: 生成されたドメイン文字列（グローバル IP アドレス）
+
+**用途**: クライアントがドメインを自動生成する場合に使用。グローバル IP を取得して、グループのスコープとして使用します。
+
+---
 
 ### createGroup
 
@@ -225,13 +304,14 @@ mutation FireEventsByNode(
 }
 ```
 
-### dissolveGroup
+### leaveGroup
 
-グループを解散します（`onGroupDissolve` subscription をトリガー）。
+ノードがグループから退出します。
 
 ```graphql
-mutation DissolveGroup($groupId: ID!, $domain: String!) {
-  dissolveGroup(groupId: $groupId, domain: $domain) {
+mutation LeaveGroup($groupId: ID!, $domain: String!, $nodeId: ID!) {
+  leaveGroup(groupId: $groupId, domain: $domain, nodeId: $nodeId) {
+    peerId
     groupId
     domain
     message
@@ -239,7 +319,74 @@ mutation DissolveGroup($groupId: ID!, $domain: String!) {
 }
 ```
 
-**注意**: 以前の `leaveGroup` mutation は削除され、`dissolveGroup` mutation に置き換えられました。
+**用途**: メンバーノードがグループから退出する際に使用。
+
+---
+
+### dissolveGroup
+
+グループを解散します（`onGroupDissolve` subscription をトリガー）。
+
+```graphql
+mutation DissolveGroup($groupId: ID!, $domain: String!, $hostId: ID!) {
+  dissolveGroup(groupId: $groupId, domain: $domain, hostId: $hostId) {
+    groupId
+    domain
+    message
+  }
+}
+```
+
+**用途**: ホストがグループ全体を解散する際に使用。すべてのメンバーに `onGroupDissolve` subscription が配信されます。
+
+**注意**: `dissolveGroup` はホスト専用の操作です。メンバーの退出には `leaveGroup` を使用してください。
+
+---
+
+### renewHeartbeat
+
+ホストがグループのハートビートを更新します。
+
+```graphql
+mutation RenewHeartbeat($groupId: ID!, $domain: String!, $hostId: ID!) {
+  renewHeartbeat(groupId: $groupId, domain: $domain, hostId: $hostId) {
+    groupId
+    domain
+    expiresAt
+    heartbeatIntervalSeconds
+  }
+}
+```
+
+**用途**: ホストが定期的に呼び出して、グループの有効期限を延長します。
+
+**重要**: この mutation はホストのみが実行できます。非ホストが実行すると `Unauthorized` エラーが返されます。
+
+**ハートビート間隔**: 環境変数 `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` で設定（開発環境: 15秒、本番環境: 30秒）
+
+---
+
+### sendMemberHeartbeat
+
+メンバーノードがハートビートを送信します。
+
+```graphql
+mutation SendMemberHeartbeat($groupId: ID!, $domain: String!, $nodeId: ID!) {
+  sendMemberHeartbeat(groupId: $groupId, domain: $domain, nodeId: $nodeId) {
+    nodeId
+    groupId
+    domain
+    expiresAt
+    heartbeatIntervalSeconds
+  }
+}
+```
+
+**用途**: メンバーノードが定期的に呼び出して、ノードの有効期限を延長します。
+
+**ハートビート間隔**: 環境変数 `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` で設定（開発環境: 15秒、本番環境: 120秒）
+
+**TTL**: ハートビートが途絶えると、TTL（Time To Live）が経過した後にノードは自動的にグループから削除されます（開発環境: 60秒、本番環境: 600秒）
 
 ## Subscriptions
 

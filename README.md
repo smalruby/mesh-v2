@@ -21,6 +21,15 @@ Mesh v2 is a cloud-based backend system that enables real-time data sharing and 
 - **NodeStatus**: Latest data from a Node
 - **Event**: Notification payload fired by Nodes
 
+## Documentation
+
+- **[API Reference](docs/api-reference.md)** - Complete GraphQL API reference (Queries, Mutations, Subscriptions, Error Handling)
+- **[Architecture](docs/architecture.md)** - System architecture, data flows, DynamoDB table design, resolver processing
+- **[Development Guide](docs/development.md)** - Local development setup, TDD workflow, testing, debugging
+- **[Deployment Guide](docs/deployment.md)** - Initial deployment to production, verification procedures
+- **[Operations Guide](docs/operations.md)** - Monitoring, alerting, cost management, scaling, troubleshooting
+- **[JavaScript Client Example](examples/javascript-client/README.md)** - Reference implementation for client integration
+
 ## Performance Requirements
 
 - **Max Clients**: 40 nodes/group
