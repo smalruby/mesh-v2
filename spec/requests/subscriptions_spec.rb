@@ -23,7 +23,7 @@ RSpec.describe "Subscriptions API", type: :request do
       # onMessageInGroupのディレクティブ確認
       # reportDataByNode, fireEventsByNode, dissolveGroup を購読
       expect(schema_content).to match(
-        /onMessageInGroup.*@aws_subscribe\(mutations:\s*\[\"reportDataByNode\", \"fireEventsByNode\", \"dissolveGroup\"\]\)/m
+        /onMessageInGroup.*@aws_subscribe\(mutations:\s*\["reportDataByNode", "fireEventsByNode", "dissolveGroup"\]\)/m
       )
     end
 

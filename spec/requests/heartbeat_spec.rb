@@ -51,7 +51,7 @@ RSpec.describe "Heartbeat API", type: :request do
         groupId: group_id,
         domain: domain,
         hostId: member_id # ホストではない
-      })
+      }, suppress_errors: true)
 
       expect(response["errors"]).not_to be_nil
       expect(response["errors"][0]["errorType"]).to eq("Unauthorized")
@@ -64,7 +64,7 @@ RSpec.describe "Heartbeat API", type: :request do
         groupId: "non-existent-group",
         domain: domain,
         hostId: host_id
-      })
+      }, suppress_errors: true)
 
       expect(response["errors"]).not_to be_nil
       expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")

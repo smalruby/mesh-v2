@@ -22,7 +22,7 @@ RSpec.describe "joinGroup expiration validation", type: :request do
         groupId: group_id,
         domain: domain,
         nodeId: node_id
-      })
+      }, suppress_errors: true)
 
       # 3. エラーレスポンス検証
       expect(join_response["errors"]).not_to be_nil

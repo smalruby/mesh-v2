@@ -94,7 +94,7 @@ RSpec.describe "DissolveGroup API", type: :request do
           groupId: group_id,
           domain: domain,
           hostId: node_id  # ホストではない
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(response["errors"]).not_to be_nil
@@ -107,7 +107,7 @@ RSpec.describe "DissolveGroup API", type: :request do
           groupId: "non-existent-group",
           domain: domain,
           hostId: host_id
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(response["errors"]).not_to be_nil
@@ -136,7 +136,7 @@ RSpec.describe "DissolveGroup API", type: :request do
           groupId: group_id,
           domain: domain,
           hostId: host_id
-        })
+        }, suppress_errors: true)
 
         expect(response2["errors"]).not_to be_nil
         expect(response2["errors"][0]["message"]).to include("Group not found")

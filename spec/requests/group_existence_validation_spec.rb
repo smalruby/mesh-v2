@@ -14,7 +14,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           groupId: "non-existent-group",
           domain: domain,
           nodeId: node_id
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
@@ -49,7 +49,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           groupId: group_id,
           domain: domain,
           nodeId: node_id
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(join_response["errors"]).not_to be_nil
@@ -71,7 +71,7 @@ RSpec.describe "Group Existence Validation", type: :request do
             {key: "temperature", value: "25.5"},
             {key: "humidity", value: "60"}
           ]
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
@@ -109,7 +109,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           data: [
             {key: "temperature", value: "25.5"}
           ]
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(report_response["errors"]).not_to be_nil
@@ -147,7 +147,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         groupId: group_id,
         domain: domain,
         nodeId: new_node_id
-      })
+      }, suppress_errors: true)
       expect(join_response["errors"]).not_to be_nil
       expect(join_response["errors"][0]["message"]).to include("not found")
       expect(join_response["errors"][0]["errorType"]).to eq("GroupNotFound")
@@ -159,7 +159,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         domain: domain,
         nodeId: node_id,
         data: [{key: "test", value: "value"}]
-      })
+      }, suppress_errors: true)
       expect(report_response["errors"]).not_to be_nil
       expect(report_response["errors"][0]["message"]).to include("not found")
     end
