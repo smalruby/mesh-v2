@@ -27,6 +27,7 @@ type Node {
   name: String!
   groupId: ID
   domain: String    # 所属しているdomain
+  expiresAt: AWSDateTime
   heartbeatIntervalSeconds: Int
 }
 
