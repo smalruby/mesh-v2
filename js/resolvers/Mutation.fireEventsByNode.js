@@ -25,19 +25,23 @@ export function response(ctx) {
 
     const { groupId, domain, nodeId, events } = ctx.arguments;
 
-    // BatchEvent型を返す（1回のSubscriptionで複数イベントを配列として送信）
+    // MeshMessage型を返す（batchEventフィールドのみ設定）
     return {
-        events: events.map(event => ({
-            name: event.eventName,
+        nodeStatus: null,
+        batchEvent: {
+            events: events.map(event => ({
+                name: event.eventName,
+                firedByNodeId: nodeId,
+                groupId: groupId,
+                domain: domain,
+                payload: event.payload || null,
+                timestamp: event.firedAt
+            })),
             firedByNodeId: nodeId,
             groupId: groupId,
             domain: domain,
-            payload: event.payload || null,
-            timestamp: event.firedAt
-        })),
-        firedByNodeId: nodeId,
-        groupId: groupId,
-        domain: domain,
-        timestamp: util.time.nowISO8601()
+            timestamp: util.time.nowISO8601()
+        },
+        groupDissolve: null
     };
 }

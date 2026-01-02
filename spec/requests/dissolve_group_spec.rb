@@ -24,9 +24,10 @@ RSpec.describe "DissolveGroup API", type: :request do
         # レスポンス検証
         expect(response["errors"]).to be_nil
         expect(response["data"]["dissolveGroup"]).not_to be_nil
-        expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
-        expect(response["data"]["dissolveGroup"]["domain"]).to eq(domain)
-        expect(response["data"]["dissolveGroup"]["message"]).to include("dissolved")
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]).not_to be_nil
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["domain"]).to eq(domain)
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["message"]).to include("dissolved")
 
         # グループが存在しないことを確認
         get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
@@ -57,7 +58,7 @@ RSpec.describe "DissolveGroup API", type: :request do
         # レスポンス検証
         expect(response["errors"]).to be_nil
         expect(response["data"]["dissolveGroup"]).not_to be_nil
-        expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
 
         # グループが存在しないことを確認
         get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))

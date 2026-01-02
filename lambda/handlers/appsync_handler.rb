@@ -116,9 +116,13 @@ end
 
 def format_dissolve_group_response(result)
   {
-    groupId: result[:groupId],
-    domain: result[:domain],
-    message: result[:message]
+    nodeStatus: nil,
+    batchEvent: nil,
+    groupDissolve: {
+      groupId: result[:groupId],
+      domain: result[:domain],
+      message: result[:message]
+    }
   }
 end
 

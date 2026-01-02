@@ -128,7 +128,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         hostId: host_id
       })
       expect(dissolve_response["errors"]).to be_nil
-      expect(dissolve_response["data"]["dissolveGroup"]["message"]).to include("dissolved")
+      expect(dissolve_response["data"]["dissolveGroup"]["groupDissolve"]["message"]).to include("dissolved")
 
       # 新しいノードの参加を試みる（エラーになるべき）
       new_node_id = "new-node-#{Time.now.to_i}"

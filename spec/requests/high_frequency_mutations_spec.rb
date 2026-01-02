@@ -31,18 +31,18 @@ RSpec.describe "High-Frequency Mutations API", type: :request do
       response = execute_graphql(query, variables)
 
       expect(response["errors"]).to be_nil
-      expect(response["data"]["reportDataByNode"]).to include(
-        "nodeId" => node_id,
-        "groupId" => group_id,
-        "domain" => test_domain
-      )
-      expect(response["data"]["reportDataByNode"]["data"]).to be_an(Array)
-      expect(response["data"]["reportDataByNode"]["data"].size).to eq(2)
-      expect(response["data"]["reportDataByNode"]["data"]).to include(
+      expect(response["data"]["reportDataByNode"]["nodeStatus"]).not_to be_nil
+      node_status = response["data"]["reportDataByNode"]["nodeStatus"]
+      expect(node_status["nodeId"]).to eq(node_id)
+      expect(node_status["groupId"]).to eq(group_id)
+      expect(node_status["domain"]).to eq(test_domain)
+      expect(node_status["data"]).to be_an(Array)
+      expect(node_status["data"].size).to eq(2)
+      expect(node_status["data"]).to include(
         {"key" => "temperature", "value" => "25.5"},
         {"key" => "humidity", "value" => "60.0"}
       )
-      expect(response["data"]["reportDataByNode"]["timestamp"]).to match_iso8601
+      expect(node_status["timestamp"]).to match_iso8601
     end
 
     it "高頻度でデータを報告できる（15 ops/sec）" do
@@ -70,7 +70,7 @@ RSpec.describe "High-Frequency Mutations API", type: :request do
       # すべて成功することを確認
       responses.each do |response|
         expect(response["errors"]).to be_nil
-        expect(response["data"]["reportDataByNode"]["nodeId"]).to eq(node_id)
+        expect(response["data"]["reportDataByNode"]["nodeStatus"]["nodeId"]).to eq(node_id)
       end
     end
   end

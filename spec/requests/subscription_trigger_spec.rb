@@ -31,7 +31,9 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
         expect(response["errors"]).to be_nil
         expect(response["data"]["reportDataByNode"]).not_to be_nil
 
-        result = response["data"]["reportDataByNode"]
+        mesh_message = response["data"]["reportDataByNode"]
+        expect(mesh_message["nodeStatus"]).not_to be_nil
+        result = mesh_message["nodeStatus"]
 
         # Subscription filteringに必要なフィールドが含まれているか確認
         expect(result).to have_key("groupId")
@@ -64,7 +66,9 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
           data: [{key: "test", value: "value"}]
         })
 
-        result = response["data"]["reportDataByNode"]
+        mesh_message = response["data"]["reportDataByNode"]
+        expect(mesh_message["nodeStatus"]).not_to be_nil
+        result = mesh_message["nodeStatus"]
 
         # Subscription filteringのために、入力パラメータと戻り値が一致する必要がある
         expect(result["groupId"]).to eq(group_id),
@@ -87,7 +91,9 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
         })
 
         expect(response["errors"]).to be_nil
-        result = response["data"]["dissolveGroup"]
+        mesh_message = response["data"]["dissolveGroup"]
+        expect(mesh_message["groupDissolve"]).not_to be_nil
+        result = mesh_message["groupDissolve"]
 
         # Subscription filteringに必要なフィールド
         expect(result).to have_key("groupId")
@@ -104,22 +110,17 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
     it "GraphQLスキーマでSubscriptionがgroupIdとdomainを引数に取る" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
-      # onDataUpdateInGroupの引数確認
+      # onMessageInGroupの引数確認
       expect(schema_content).to match(
-        /onDataUpdateInGroup\(groupId:\s*ID!,\s*domain:\s*String!\)/
-      ), "onDataUpdateInGroup must accept groupId and domain arguments for filtering"
-
-      # onGroupDissolveの引数確認
-      expect(schema_content).to match(
-        /onGroupDissolve\(groupId:\s*ID!,\s*domain:\s*String!\)/
-      ), "onGroupDissolve must accept groupId and domain arguments for filtering"
+        /onMessageInGroup\(groupId:\s*ID!,\s*domain:\s*String!\)/ 
+      ), "onMessageInGroup must accept groupId and domain arguments for filtering"
     end
 
     it "NodeStatus型がgroupIdとdomainフィールドを含む" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
       # NodeStatus型の定義を抽出
-      node_status_match = schema_content.match(/type NodeStatus \{([^}]+)\}/m)
+      node_status_match = schema_content.match(/type NodeStatus\s+[^\{]*\{([^}]+)\}/m)
       expect(node_status_match).not_to be_nil
 
       node_status_def = node_status_match[1]
@@ -136,23 +137,18 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
     it "@aws_subscribe directiveが正しいmutationを指定している" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
-      # onDataUpdateInGroup -> reportDataByNode
+      # onMessageInGroup -> reportDataByNode, fireEventsByNode, dissolveGroup
       expect(schema_content).to match(
-        /onDataUpdateInGroup[^@]+@aws_subscribe\(mutations:\s*\["reportDataByNode"\]\)/m
-      ), "onDataUpdateInGroup must subscribe to reportDataByNode mutation"
-
-      # onGroupDissolve -> dissolveGroup
-      expect(schema_content).to match(
-        /onGroupDissolve[^@]+@aws_subscribe\(mutations:\s*\["dissolveGroup"\]\)/m
-      ), "onGroupDissolve must subscribe to dissolveGroup mutation"
+        /onMessageInGroup[^@]+@aws_subscribe\(mutations:\s*\[\"reportDataByNode\", \"fireEventsByNode\", \"dissolveGroup\"\]\)/m
+      ), "onMessageInGroup must subscribe to required mutations"
     end
 
     it "MutationとSubscriptionの戻り値型が一致している" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
-      # reportDataByNode mutation と onDataUpdateInGroup subscription
+      # reportDataByNode mutation と onMessageInGroup subscription
       mutation_match = schema_content.match(/reportDataByNode[^:]+:\s*(\w+)/)
-      subscription_match = schema_content.match(/onDataUpdateInGroup[^:]+:\s*(\w+)/)
+      subscription_match = schema_content.match(/onMessageInGroup[^:]+:\s*(\w+)/)
 
       expect(mutation_match).not_to be_nil
       expect(subscription_match).not_to be_nil
@@ -161,7 +157,7 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
       subscription_type = subscription_match[1]
 
       expect(mutation_type).to eq(subscription_type),
-        "reportDataByNode mutation return type (#{mutation_type}) must match onDataUpdateInGroup subscription type (#{subscription_type})"
+        "reportDataByNode mutation return type (#{mutation_type}) must match onMessageInGroup subscription type (#{subscription_type})"
     end
   end
 
@@ -182,7 +178,7 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
       puts "   aws logs tail /aws/appsync/apis/2kw5fyno4bhjbc47mvu3rxytye --follow"
       puts ""
       puts "期待される動作："
-      puts "- reportDataByNode mutation 完了後、AppSync が onDataUpdateInGroup に publish"
+      puts "- reportDataByNode mutation 完了後、AppSync が onMessageInGroup に publish"
       puts "- groupId と domain が一致する subscription のみがデータを受信"
       puts "=" * 80
 

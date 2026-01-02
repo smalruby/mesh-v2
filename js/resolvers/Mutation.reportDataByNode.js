@@ -41,14 +41,18 @@ export function response(ctx) {
     util.error(ctx.error.message, ctx.error.type);
   }
 
-  // DynamoDBの結果からNodeStatus型を構築
+  // DynamoDBの結果からMeshMessage型を構築（nodeStatusフィールドのみ設定）
   const item = ctx.result;
 
   return {
-    nodeId: item.nodeId,
-    groupId: item.groupId,
-    domain: item.domain,
-    data: item.data,
-    timestamp: item.timestamp
+    nodeStatus: {
+      nodeId: item.nodeId,
+      groupId: item.groupId,
+      domain: item.domain,
+      data: item.data,
+      timestamp: item.timestamp
+    },
+    batchEvent: null,
+    groupDissolve: null
   };
 }

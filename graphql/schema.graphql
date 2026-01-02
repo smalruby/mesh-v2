@@ -31,6 +31,15 @@ type Node {
   heartbeatIntervalSeconds: Int
 }
 
+# メッセージの包括的な型
+# 単一のSubscriptionですべてのメッセージタイプを受け取るために使用
+# 各Mutationは該当するフィールドのみを設定する
+type MeshMessage {
+  nodeStatus: NodeStatus
+  batchEvent: BatchEvent
+  groupDissolve: GroupDissolvePayload
+}
+
 type NodeStatus {
   nodeId: ID!
   groupId: ID!
@@ -138,12 +147,11 @@ type Mutation {
     nodeId: ID!
   ): LeaveGroupPayload
 
-  # Note: nullableにすることでSubscription型と一致させる
   dissolveGroup(
     groupId: ID!
     domain: String!
     hostId: ID!
-  ): GroupDissolvePayload
+  ): MeshMessage
 
   # ハートビート更新 (Host)
   renewHeartbeat(
@@ -160,13 +168,12 @@ type Mutation {
   ): MemberHeartbeatPayload!
 
   # データ通信
-  # Note: nullableにすることでSubscription型と一致させる
   reportDataByNode(
     groupId: ID!
     domain: String!
     nodeId: ID!
     data: [SensorDataInput!]!
-  ): NodeStatus
+  ): MeshMessage
 
   # 複数イベントを一度に送信（1回のSubscriptionを発火）
   fireEventsByNode(
@@ -174,28 +181,16 @@ type Mutation {
     domain: String!
     nodeId: ID!
     events: [EventInput!]!
-  ): BatchEvent
+  ): MeshMessage
 }
 
 # --- サブスクリプション (Subscriptions) ---
 
 type Subscription {
-  # グループ内のデータ更新を購読
-  # reportDataByNode mutation がトリガー
-  # Note: nullableにすることで、NodeStatusが存在しない場合でもエラーを防ぐ
-  onDataUpdateInGroup(groupId: ID!, domain: String!): NodeStatus
-    @aws_subscribe(mutations: ["reportDataByNode"])
-
-  # グループ内のバッチイベントを購読
-  # fireEventsByNode mutation がトリガー
-  onBatchEventInGroup(groupId: ID!, domain: String!): BatchEvent
-    @aws_subscribe(mutations: ["fireEventsByNode"])
-
-  # グループ解散通知を購読
-  # dissolveGroup mutation がトリガー
-  # Note: nullableにすることで、GroupDissolvePayloadが存在しない場合でもエラーを防ぐ
-  onGroupDissolve(groupId: ID!, domain: String!): GroupDissolvePayload
-    @aws_subscribe(mutations: ["dissolveGroup"])
+  # グループ内のメッセージ（データ更新、イベント、解散通知）を統合して購読
+  # これにより、WebSocketストリームが1つになり、送信順序（Mutation実行順序）が受信側でも保証される
+  onMessageInGroup(groupId: ID!, domain: String!): MeshMessage
+    @aws_subscribe(mutations: ["reportDataByNode", "fireEventsByNode", "dissolveGroup"])
 }
 
 schema {

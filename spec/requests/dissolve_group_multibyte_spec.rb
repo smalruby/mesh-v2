@@ -38,7 +38,7 @@ RSpec.describe "DissolveGroup with Multibyte Data", type: :request do
     # 5. エラーなく成功することを確認
     expect(response["errors"]).to be_nil
     expect(response["data"]["dissolveGroup"]).not_to be_nil
-    expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+    expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
 
     # 6. グループが削除されていることを確認
     get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
@@ -75,6 +75,6 @@ RSpec.describe "DissolveGroup with Multibyte Data", type: :request do
     })
 
     expect(response["errors"]).to be_nil
-    expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+    expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
   end
 end
