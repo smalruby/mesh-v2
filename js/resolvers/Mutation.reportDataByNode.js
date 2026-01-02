@@ -45,6 +45,8 @@ export function response(ctx) {
   const item = ctx.result;
 
   return {
+    groupId: item.groupId,
+    domain: item.domain,
     nodeStatus: {
       nodeId: item.nodeId,
       groupId: item.groupId,

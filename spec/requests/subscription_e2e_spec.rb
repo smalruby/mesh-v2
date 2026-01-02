@@ -30,6 +30,8 @@ RSpec.describe "Subscription E2E Test", type: :request do
       subscription_query = <<~GRAPHQL
         subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
           onMessageInGroup(groupId: $groupId, domain: $domain) {
+            groupId
+            domain
             nodeStatus {
               nodeId
               groupId
@@ -91,6 +93,8 @@ RSpec.describe "Subscription E2E Test", type: :request do
 
       message_data = first_message["onMessageInGroup"]
       expect(message_data).not_to be_nil
+      expect(message_data["groupId"]).to eq(group_id)
+      expect(message_data["domain"]).to eq(domain)
       expect(message_data["nodeStatus"]).not_to be_nil
 
       subscription_data = message_data["nodeStatus"]
@@ -125,6 +129,8 @@ RSpec.describe "Subscription E2E Test", type: :request do
       subscription_query = <<~GRAPHQL
         subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
           onMessageInGroup(groupId: $groupId, domain: $domain) {
+            groupId
+            domain
             groupDissolve {
               groupId
               domain
@@ -158,6 +164,8 @@ RSpec.describe "Subscription E2E Test", type: :request do
       expect(received_data).not_to be_empty
       message_data = received_data.first["onMessageInGroup"]
       expect(message_data).not_to be_nil
+      expect(message_data["groupId"]).to eq(group_id)
+      expect(message_data["domain"]).to eq(domain)
       expect(message_data["groupDissolve"]).not_to be_nil
 
       dissolve_data = message_data["groupDissolve"]

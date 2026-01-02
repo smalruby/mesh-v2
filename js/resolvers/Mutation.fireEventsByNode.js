@@ -27,6 +27,8 @@ export function response(ctx) {
 
     // MeshMessage型を返す（batchEventフィールドのみ設定）
     return {
+        groupId: groupId,
+        domain: domain,
         nodeStatus: null,
         batchEvent: {
             events: events.map(event => ({

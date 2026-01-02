@@ -35,6 +35,8 @@ type Node {
 # 単一のSubscriptionですべてのメッセージタイプを受け取るために使用
 # 各Mutationは該当するフィールドのみを設定する
 type MeshMessage {
+  groupId: ID!              # Subscription フィルタリング用
+  domain: String!           # Subscription フィルタリング用
   nodeStatus: NodeStatus
   batchEvent: BatchEvent
   groupDissolve: GroupDissolvePayload

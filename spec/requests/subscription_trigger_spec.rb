@@ -29,9 +29,11 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
 
         # Mutationが成功
         expect(response["errors"]).to be_nil
-        expect(response["data"]["reportDataByNode"]).not_to be_nil
-
         mesh_message = response["data"]["reportDataByNode"]
+        # Verify top-level filtering fields
+        expect(mesh_message["groupId"]).to eq(group_id)
+        expect(mesh_message["domain"]).to eq(domain)
+
         expect(mesh_message["nodeStatus"]).not_to be_nil
         result = mesh_message["nodeStatus"]
 
@@ -67,14 +69,14 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
         })
 
         mesh_message = response["data"]["reportDataByNode"]
+        # Subscription filteringのために、入力パラメータと戻り値が一致する必要がある
+        expect(mesh_message["groupId"]).to eq(group_id),
+          "Mutation response groupId must match input for subscription filtering"
+        expect(mesh_message["domain"]).to eq(domain),
+          "Mutation response domain must match input for subscription filtering"
+
         expect(mesh_message["nodeStatus"]).not_to be_nil
         result = mesh_message["nodeStatus"]
-
-        # Subscription filteringのために、入力パラメータと戻り値が一致する必要がある
-        expect(result["groupId"]).to eq(group_id),
-          "Mutation response groupId must match input for subscription filtering"
-        expect(result["domain"]).to eq(domain),
-          "Mutation response domain must match input for subscription filtering"
       end
     end
 
@@ -92,6 +94,10 @@ RSpec.describe "Subscription Trigger Validation", type: :request do
 
         expect(response["errors"]).to be_nil
         mesh_message = response["data"]["dissolveGroup"]
+        # Verify top-level filtering fields
+        expect(mesh_message["groupId"]).to eq(group_id)
+        expect(mesh_message["domain"]).to eq(domain)
+
         expect(mesh_message["groupDissolve"]).not_to be_nil
         result = mesh_message["groupDissolve"]
 

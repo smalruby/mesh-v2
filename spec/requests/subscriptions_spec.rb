@@ -67,6 +67,9 @@ RSpec.describe "Subscriptions API", type: :request do
 
         expect(response["errors"]).to be_nil
         expect(response["data"]["reportDataByNode"]).not_to be_nil
+        # Verify top-level filtering fields
+        expect(response["data"]["reportDataByNode"]["groupId"]).to eq(group_id)
+        expect(response["data"]["reportDataByNode"]["domain"]).to eq(domain)
         # MeshMessage has nodeStatus field
         expect(response["data"]["reportDataByNode"]["nodeStatus"]).not_to be_nil
         expect(response["data"]["reportDataByNode"]["nodeStatus"]["nodeId"]).to eq(node1_id)
@@ -90,6 +93,9 @@ RSpec.describe "Subscriptions API", type: :request do
 
         expect(response["errors"]).to be_nil
         expect(response["data"]["dissolveGroup"]).not_to be_nil
+        # Verify top-level filtering fields
+        expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+        expect(response["data"]["dissolveGroup"]["domain"]).to eq(domain)
         # MeshMessage has groupDissolve field
         expect(response["data"]["dissolveGroup"]["groupDissolve"]).not_to be_nil
         expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)

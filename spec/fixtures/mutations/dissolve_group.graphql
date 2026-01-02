@@ -1,5 +1,7 @@
 mutation DissolveGroup($groupId: ID!, $domain: String!, $hostId: ID!) {
   dissolveGroup(groupId: $groupId, domain: $domain, hostId: $hostId) {
+    groupId
+    domain
     groupDissolve {
       groupId
       domain

@@ -31,6 +31,11 @@ RSpec.describe "High-Frequency Mutations API", type: :request do
       response = execute_graphql(query, variables)
 
       expect(response["errors"]).to be_nil
+      expect(response["data"]["reportDataByNode"]).not_to be_nil
+      # Verify top-level filtering fields
+      expect(response["data"]["reportDataByNode"]["groupId"]).to eq(group_id)
+      expect(response["data"]["reportDataByNode"]["domain"]).to eq(test_domain)
+
       expect(response["data"]["reportDataByNode"]["nodeStatus"]).not_to be_nil
       node_status = response["data"]["reportDataByNode"]["nodeStatus"]
       expect(node_status["nodeId"]).to eq(node_id)
