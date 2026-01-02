@@ -64,12 +64,14 @@ export function response(ctx) {
   // TransactWriteItemsは個別のアイテムを返さないため、
   // リクエストパラメータからNode型を構築
   const { groupId, domain, nodeId } = ctx.args;
+  const group = ctx.stash.group;
 
   return {
     id: nodeId,
     name: `Node ${nodeId}`,
     groupId: groupId,
     domain: domain,
+    expiresAt: group ? group.expiresAt : null,
     heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120')
   };
 }
