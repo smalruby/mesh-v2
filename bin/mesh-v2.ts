@@ -9,8 +9,8 @@ dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
 
 const app = new cdk.App();
 
-// Stage取得（デフォルト: stg）
-const stage = app.node.tryGetContext('stage') || 'stg';
+// Stage取得（優先順位: --context stage=..., .envのSTAGE, デフォルト: stg）
+const stage = app.node.tryGetContext('stage') || process.env.STAGE || 'stg';
 const stackName = stage === 'prod' ? 'MeshV2Stack' : `MeshV2Stack-${stage}`;
 
 new MeshV2Stack(app, stackName, {
