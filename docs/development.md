@@ -122,11 +122,11 @@ Mesh v2 は環境変数を使用して設定を管理し、開発環境と本番
 | 変数 | 開発環境 | 本番環境 | 説明 |
 |------|---------|---------|------|
 | `MESH_SECRET_KEY` | `dev-secret-key-for-testing` | (GitHub Secrets で設定) | ドメイン検証用の秘密鍵 |
-| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `30` | ホストのハートビート間隔（秒） |
-| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | ホストグループの TTL（秒、間隔の5倍） |
+| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `60` | ホストのハートビート間隔（秒） |
+| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | ホストグループの TTL（秒） |
 | `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | メンバーのハートビート間隔（秒） |
-| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | メンバーノードの TTL（秒、間隔の5倍） |
-| `MESH_MAX_CONNECTION_TIME_MINUTES` | `10` | `50` | グループの最大接続時間（分） |
+| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | メンバーノードの TTL（秒） |
+| `MESH_MAX_CONNECTION_TIME_SECONDS` | `300` | `1500` | グループの最大接続時間（秒） |
 
 ### 設定の根拠
 

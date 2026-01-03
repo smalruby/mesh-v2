@@ -15,6 +15,7 @@ const state = {
   sessionStartTime: null,
   sessionTimerId: null,
   heartbeatTimerId: null,
+  heartbeatIntervalSeconds: 60, // Default 60 seconds
   messageSubscriptionId: null,
   sensorData: {
     temperature: 20,
@@ -257,6 +258,9 @@ async function handleCreateGroup() {
 
     // Join the created group automatically
     state.currentGroup = group;
+    if (group.heartbeatIntervalSeconds) {
+      state.heartbeatIntervalSeconds = group.heartbeatIntervalSeconds;
+    }
 
     // Initialize sensor data for this node
     // This immediately shares current sensor state with other group members
@@ -403,6 +407,10 @@ async function handleJoinGroup() {
       expiresAt: result.expiresAt
     };
 
+    if (result.heartbeatIntervalSeconds) {
+      state.heartbeatIntervalSeconds = result.heartbeatIntervalSeconds;
+    }
+
     // Initialize sensor data for this node
     // This immediately shares current sensor state with other group members
     const initialData = [
@@ -431,6 +439,7 @@ async function handleJoinGroup() {
 
     // Stop heartbeat if it was running (e.g. from a previously created group)
     stopHeartbeat();
+    startHeartbeat();
 
     showSuccess('groupSuccess', `Joined group: ${state.selectedGroup.name}`);
     updateCurrentGroupUI();
@@ -861,15 +870,15 @@ function updateRateStatus() {
 }
 
 /**
- * Start heartbeat timer (host only)
- * Renews the group heartbeat every 15 seconds
+ * Start heartbeat timer
+ * Renews the group heartbeat periodically using server-provided interval
  */
 function startHeartbeat() {
   if (state.heartbeatTimerId) {
     clearInterval(state.heartbeatTimerId);
   }
 
-  console.log('Starting heartbeat timer...');
+  console.log(`Starting heartbeat timer (${state.heartbeatIntervalSeconds}s)...`);
   document.getElementById('heartbeatStatus').style.display = 'block';
 
   state.heartbeatTimerId = setInterval(async () => {
@@ -879,31 +888,45 @@ function startHeartbeat() {
     }
 
     const isHost = state.currentGroup.hostId === state.currentNodeId;
-    if (!isHost) {
-      stopHeartbeat();
-      return;
-    }
 
     try {
-      const result = await state.client.renewHeartbeat(
-        state.currentGroup.id,
-        state.currentNodeId,
-        state.currentGroup.domain
-      );
-      console.log('Heartbeat renewed, expires at:', result.expiresAt);
+      let result;
+      if (isHost) {
+        result = await state.client.renewHeartbeat(
+          state.currentGroup.id,
+          state.currentNodeId,
+          state.currentGroup.domain
+        );
+        console.log('Host heartbeat renewed, expires at:', result.expiresAt);
+      } else {
+        result = await state.client.sendMemberHeartbeat(
+          state.currentGroup.id,
+          state.currentNodeId,
+          state.currentGroup.domain
+        );
+        console.log('Member heartbeat sent, expires at:', result.expiresAt);
+      }
+
       document.getElementById('lastHeartbeatTime').textContent = new Date().toLocaleTimeString();
 
       // Update session timer with new expiration if possible
       if (result.expiresAt) {
         state.currentGroup.expiresAt = result.expiresAt;
       }
+
+      // Check if interval has changed
+      if (result.heartbeatIntervalSeconds && result.heartbeatIntervalSeconds !== state.heartbeatIntervalSeconds) {
+        console.log(`Heartbeat interval changed: ${state.heartbeatIntervalSeconds}s -> ${result.heartbeatIntervalSeconds}s`);
+        state.heartbeatIntervalSeconds = result.heartbeatIntervalSeconds;
+        startHeartbeat(); // Restart with new interval
+      }
     } catch (error) {
-      console.error('Heartbeat renewal failed:', error);
+      console.error('Heartbeat failed:', error);
       if (shouldDisconnectOnError(error)) {
         handleGroupDissolved({ message: 'Session expired or group lost' });
       }
     }
-  }, 15000); // Every 15 seconds
+  }, state.heartbeatIntervalSeconds * 1000);
 }
 
 /**

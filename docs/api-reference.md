@@ -26,6 +26,7 @@ type Group {
   hostId: ID!       # 作成者ノード ID
   createdAt: AWSDateTime!
   expiresAt: AWSDateTime!  # グループの有効期限
+  heartbeatIntervalSeconds: Int
 }
 ```
 
@@ -110,6 +111,8 @@ query ListGroupsByDomain($domain: String!) {
     name
     hostId
     createdAt
+    expiresAt
+    heartbeatIntervalSeconds
   }
 }
 ```
@@ -205,6 +208,8 @@ mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!) {
     name
     hostId
     createdAt
+    expiresAt
+    heartbeatIntervalSeconds
   }
 }
 ```
@@ -218,10 +223,12 @@ mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!) {
 ```graphql
 mutation JoinGroup($groupId: ID!, $nodeId: ID!, $domain: String!) {
   joinGroup(groupId: $groupId, nodeId: $nodeId, domain: $domain) {
-    nodeId
+    id
+    name
     groupId
     domain
-    joinedAt
+    expiresAt
+    heartbeatIntervalSeconds
   }
 }
 ```
