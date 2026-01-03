@@ -109,9 +109,6 @@ type Query {
   # Domain内のグループ一覧取得（スキャン機能）
   listGroupsByDomain(domain: String!): [Group!]!
 
-  # グループ取得
-  getGroup(groupId: ID!, domain: String!): Group
-
   # NodeStatus取得
   getNodeStatus(nodeId: ID!): NodeStatus
 

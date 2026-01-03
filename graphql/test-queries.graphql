@@ -130,19 +130,7 @@ query ListGroupsByDomain {
   }
 }
 
-# グループの取得
-query GetGroup {
-  getGroup(groupId: "group-001", domain: "test-domain") {
-    id
-    domain
-    fullId
-    name
-    hostId
-    createdAt
-  }
-}
-
-# NodeStatusの取得
+# --- NodeStatus取得 ---
 query GetNodeStatus {
   getNodeStatus(nodeId: "node-001") {
     nodeId

@@ -34,13 +34,12 @@ RSpec.describe "DissolveGroup API", type: :request do
         expect(response["data"]["dissolveGroup"]["groupDissolve"]["message"]).to include("dissolved")
 
         # グループが存在しないことを確認
-        get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
-        get_response = execute_graphql(get_query, {
-          groupId: group_id,
+        list_query = File.read(File.join(__dir__, "../fixtures/queries/list_groups_by_domain.graphql"))
+        list_response = execute_graphql(list_query, {
           domain: domain
         })
 
-        expect(get_response["data"]["getGroup"]).to be_nil
+        expect(list_response["data"]["listGroupsByDomain"].any? { |g| g["id"] == group_id }).to be_falsey
       end
 
       it "メンバーがいるグループでもホストが解散できる" do
@@ -69,13 +68,12 @@ RSpec.describe "DissolveGroup API", type: :request do
         expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
 
         # グループが存在しないことを確認
-        get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
-        get_response = execute_graphql(get_query, {
-          groupId: group_id,
+        list_query = File.read(File.join(__dir__, "../fixtures/queries/list_groups_by_domain.graphql"))
+        list_response = execute_graphql(list_query, {
           domain: domain
         })
 
-        expect(get_response["data"]["getGroup"]).to be_nil
+        expect(list_response["data"]["listGroupsByDomain"].any? { |g| g["id"] == group_id }).to be_falsey
       end
     end
 

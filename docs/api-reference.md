@@ -114,24 +114,6 @@ query ListGroupsByDomain($domain: String!) {
 }
 ```
 
-### getGroup
-
-グループ ID とドメインでグループを取得します。
-
-```graphql
-query GetGroup($groupId: ID!, $domain: String!) {
-  getGroup(groupId: $groupId, domain: $domain) {
-    id
-    domain
-    fullId
-    name
-    hostId
-    createdAt
-    expiresAt
-  }
-}
-```
-
 ### getNodeStatus
 
 ノード ID でノードのステータス（センサーデータ）を取得します。

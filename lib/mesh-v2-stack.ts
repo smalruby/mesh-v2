@@ -131,14 +131,6 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.listGroupsByDomain.js'))
     });
 
-    // Query: getGroup
-    dynamoDbDataSource.createResolver('GetGroupResolver', {
-      typeName: 'Query',
-      fieldName: 'getGroup',
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.getGroup.js'))
-    });
-
     // Query: listGroupStatuses
     dynamoDbDataSource.createResolver('ListGroupStatusesResolver', {
       typeName: 'Query',

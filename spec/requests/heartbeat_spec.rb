@@ -72,18 +72,12 @@ RSpec.describe "Heartbeat API", type: :request do
   end
 
   describe "expiresAt field visibility" do
-    it "createGroup, getGroup, listGroupsByDomain で expiresAt が取得できる" do
+    it "createGroup, listGroupsByDomain で expiresAt が取得できる" do
       # 1. createGroup
       group = create_test_group(group_name, host_id, domain)
-      group_id = group["id"]
       expect(group["expiresAt"]).to match_iso8601
 
-      # 2. getGroup
-      get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
-      get_res = execute_graphql(get_query, {groupId: group_id, domain: domain})
-      expect(get_res["data"]["getGroup"]["expiresAt"]).to match_iso8601
-
-      # 3. listGroupsByDomain
+      # 2. listGroupsByDomain
       list_query = File.read(File.join(__dir__, "../fixtures/queries/list_groups_by_domain.graphql"))
       list_res = execute_graphql(list_query, {domain: domain})
       expect(list_res["data"]["listGroupsByDomain"][0]["expiresAt"]).to match_iso8601
