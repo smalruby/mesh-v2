@@ -20,6 +20,7 @@ type Group {
   hostId: ID!
   createdAt: AWSDateTime!
   expiresAt: AWSDateTime!
+  heartbeatIntervalSeconds: Int
 }
 
 type Node {

@@ -77,6 +77,9 @@ export function response(ctx) {
     util.error(ctx.error.message, ctx.error.type);
   }
 
+  // ハートビート間隔を環境変数から取得（ホスト用）
+  const heartbeatIntervalSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60');
+
   // ctx.stashに既存グループがある場合はそれを返す
   if (ctx.stash.existingGroup) {
     return {
@@ -86,7 +89,8 @@ export function response(ctx) {
       name: ctx.stash.existingGroup.name,
       hostId: ctx.stash.existingGroup.hostId,
       createdAt: ctx.stash.existingGroup.createdAt,
-      expiresAt: ctx.stash.existingGroup.expiresAt
+      expiresAt: ctx.stash.existingGroup.expiresAt,
+      heartbeatIntervalSeconds: heartbeatIntervalSeconds
     };
   }
 
@@ -98,6 +102,7 @@ export function response(ctx) {
     name: ctx.result.name,
     hostId: ctx.result.hostId,
     createdAt: ctx.result.createdAt,
-    expiresAt: ctx.result.expiresAt
+    expiresAt: ctx.result.expiresAt,
+    heartbeatIntervalSeconds: heartbeatIntervalSeconds
   };
 }
