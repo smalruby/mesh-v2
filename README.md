@@ -47,9 +47,9 @@ Mesh v2 supports batch event sending to optimize AWS AppSync Subscription costs 
 Instead of sending each event individually, events are queued and sent in batches every 250ms.
 
 - **Mutation**: `fireEventsByNode(groupId, domain, nodeId, events: [EventInput!]!)`
-- **Subscription**: `onBatchEventInGroup(groupId, domain)`
+- **Subscription**: `onMessageInGroup(groupId, domain)`
 
-When receiving a `BatchEvent`, clients calculate the relative offset for each event based on its `firedAt` timestamp to reproduce the original firing interval.
+When receiving a `BatchEvent` (via the `batchEvent` field in `onMessageInGroup`), clients calculate the relative offset for each event based on its `firedAt` timestamp to reproduce the original firing interval.
 
 ### Performance Impact
 
@@ -74,7 +74,9 @@ await client.mutate({
 // Receiving batch events
 subscription.subscribe({
   next: (data) => {
-    const batch = data.onBatchEventInGroup;
+    const batch = data.onMessageInGroup.batchEvent;
+    if (!batch) return;
+    
     const sorted = batch.events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const baseTime = new Date(sorted[0].timestamp).getTime();
     

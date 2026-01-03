@@ -140,7 +140,7 @@ sequenceDiagram
     participant DynamoDB
     participant Subscription
 
-    Node2->>AppSync: subscribe: onDataUpdateInGroup(groupId, domain)
+    Node2->>AppSync: subscribe: onMessageInGroup(groupId, domain)
     AppSync->>Subscription: WebSocket接続確立
 
     Node1->>AppSync: reportDataByNode(nodeId, groupId, domain, data)
@@ -149,10 +149,10 @@ sequenceDiagram
     alt グループ存在
         Resolver->>DynamoDB: PutItem: センサーデータ保存
         DynamoDB-->>Resolver: Success
-        Resolver-->>AppSync: NodeStatus
-        AppSync->>Subscription: Publish: onDataUpdateInGroup
-        Subscription-->>Node2: NodeStatus（リアルタイム配信）
-        AppSync-->>Node1: NodeStatus（レスポンス）
+        Resolver-->>AppSync: MeshMessage
+        AppSync->>Subscription: Publish: onMessageInGroup (nodeStatus)
+        Subscription-->>Node2: MeshMessage（リアルタイム配信）
+        AppSync-->>Node1: MeshMessage（レスポンス）
     else グループなし
         Resolver-->>AppSync: GroupNotFound error
         AppSync-->>Node1: Error
@@ -170,7 +170,7 @@ sequenceDiagram
     participant DynamoDB
     participant Subscription
 
-    Node2->>AppSync: subscribe: onBatchEventInGroup(groupId, domain)
+    Node2->>AppSync: subscribe: onMessageInGroup(groupId, domain)
     AppSync->>Subscription: WebSocket接続確立
 
     Node1->>AppSync: fireEventsByNode(nodeId, groupId, domain, events[])
@@ -179,10 +179,10 @@ sequenceDiagram
     alt グループ存在
         Resolver->>DynamoDB: BatchWriteItem: イベント保存（最大25件）
         DynamoDB-->>Resolver: Success
-        Resolver-->>AppSync: BatchEvent
-        AppSync->>Subscription: Publish: onBatchEventInGroup
-        Subscription-->>Node2: BatchEvent（リアルタイム配信）
-        AppSync-->>Node1: BatchEvent（レスポンス）
+        Resolver-->>AppSync: MeshMessage
+        AppSync->>Subscription: Publish: onMessageInGroup (batchEvent)
+        Subscription-->>Node2: MeshMessage（リアルタイム配信）
+        AppSync-->>Node1: MeshMessage（レスポンス）
     else グループなし
         Resolver-->>AppSync: GroupNotFound error
         AppSync-->>Node1: Error
@@ -237,20 +237,20 @@ sequenceDiagram
     participant AppSync
     participant Subscription
 
-    Client1->>AppSync: subscribe: onDataUpdateInGroup(groupId="A", domain="example.com")
+    Client1->>AppSync: subscribe: onMessageInGroup(groupId="A", domain="example.com")
     AppSync->>Subscription: 登録: groupId=A, domain=example.com
 
-    Client2->>AppSync: subscribe: onDataUpdateInGroup(groupId="A", domain="example.com")
+    Client2->>AppSync: subscribe: onMessageInGroup(groupId="A", domain="example.com")
     AppSync->>Subscription: 登録: groupId=A, domain=example.com
 
-    Client3->>AppSync: subscribe: onDataUpdateInGroup(groupId="B", domain="example.com")
+    Client3->>AppSync: subscribe: onMessageInGroup(groupId="B", domain="example.com")
     AppSync->>Subscription: 登録: groupId=B, domain=example.com
 
     Note over AppSync: reportDataByNode mutation (groupId="A")
     AppSync->>Subscription: Publish to groupId="A"
 
-    Subscription-->>Client1: NodeStatus（配信）
-    Subscription-->>Client2: NodeStatus（配信）
+    Subscription-->>Client1: MeshMessage（配信）
+    Subscription-->>Client2: MeshMessage（配信）
     Note over Client3: groupId="B"なので配信されない
 ```
 

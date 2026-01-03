@@ -84,10 +84,10 @@ mutation LeaveGroup {
     domain: "test-domain"
     nodeId: "node-001"
   ) {
-    id
-    name
+    peerId
     groupId
     domain
+    message
   }
 }
 
@@ -103,14 +103,18 @@ mutation ReportData {
       { key: "pressure", value: "1013" }
     ]
   ) {
-    nodeId
     groupId
     domain
-    data {
-      key
-      value
+    nodeStatus {
+      nodeId
+      groupId
+      domain
+      data {
+        key
+        value
+      }
+      timestamp
     }
-    timestamp
   }
 }
 
@@ -172,26 +176,29 @@ query ListNodesInGroup {
 # Subscriptions（Phase 2でResolver実装後にテスト可能）
 # ============================================
 
-# グループ内のデータ更新を購読
-subscription OnDataUpdate {
-  onDataUpdateInGroup(groupId: "group-001", domain: "test-domain") {
-    nodeId
+# グループ内の全メッセージ（データ更新、イベント、解散通知）を購読
+subscription OnMessageInGroup {
+  onMessageInGroup(groupId: "group-001", domain: "test-domain") {
     groupId
     domain
-    data {
-      key
-      value
+    nodeStatus {
+      nodeId
+      data {
+        key
+        value
+      }
+      timestamp
     }
-    timestamp
-  }
-}
-
-# グループ解散通知を購読
-subscription OnGroupDissolve {
-  onGroupDissolve(groupId: "group-001", domain: "test-domain") {
-    groupId
-    domain
-    message
+    batchEvent {
+      events {
+        name
+        payload
+      }
+      firedByNodeId
+    }
+    groupDissolve {
+      message
+    }
   }
 }
 
