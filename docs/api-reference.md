@@ -374,7 +374,7 @@ mutation SendMemberHeartbeat($groupId: ID!, $domain: String!, $nodeId: ID!) {
 
 Mesh v2 は AWS AppSync GraphQL Subscriptions over WebSocket を使用したリアルタイム通知をサポートしています。
 
-### 重要な変更（Issue #500 関連）
+### 重要な変更（Issue smalruby/smalruby3-gui#500 関連）
 
 **統合された Subscription**: 以前は個別の subscription (`onDataUpdateInGroup`, `onBatchEventInGroup`, `onGroupDissolve`) がありましたが、現在は **`onMessageInGroup`** という単一の subscription に統合されています。
 
@@ -703,4 +703,4 @@ AWS AppSync のデフォルトのレート制限が適用されます:
 
 **Last Updated**: 2026-01-03
 **Phase**: 3 - Documentation Consolidation
-**Status**: ✅ Subscription を `onMessageInGroup` に統合（Issue #500 関連）
+**Status**: ✅ Subscription を `onMessageInGroup` に統合（Issue smalruby/smalruby3-gui#500 関連）
