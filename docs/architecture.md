@@ -465,7 +465,6 @@ graph LR
 ```
 
 **使用例**:
-- `Query.getGroup`: シンプルな GetItem
 - `Query.listGroupsByDomain`: GSI クエリ
 - `Mutation.createDomain`: ソース IP 取得（DynamoDB 不要）
 

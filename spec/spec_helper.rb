@@ -29,7 +29,7 @@ RSpec.configure do |config|
 end
 
 # GraphQL APIを実行するヘルパーメソッド
-def execute_graphql(query, variables = {})
+def execute_graphql(query, variables = {}, suppress_errors: false)
   uri = URI(ENV["APPSYNC_ENDPOINT"])
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = true
@@ -48,7 +48,7 @@ def execute_graphql(query, variables = {})
 
   response = http.request(request)
   response_body = JSON.parse(response.body)
-  if response_body["errors"]
+  if response_body["errors"] && !suppress_errors
     puts "GraphQL Errors: #{response_body["errors"].inspect}"
   end
   response_body

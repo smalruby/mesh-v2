@@ -11,7 +11,7 @@ RSpec.describe "Subscription E2E Test", type: :request do
     )
   end
 
-  describe "reportDataByNode mutation triggers onDataUpdateInGroup subscription" do
+  describe "reportDataByNode mutation triggers onMessageInGroup subscription (NodeStatus)" do
     it "subscriptionに参加後、mutationを実行すると通知を受信する" do
       # Setup: Group作成とNode参加
       group = create_test_group("E2E Subscription Test", host_id, domain)
@@ -28,16 +28,20 @@ RSpec.describe "Subscription E2E Test", type: :request do
 
       # Subscription query
       subscription_query = <<~GRAPHQL
-        subscription OnDataUpdateInGroup($groupId: ID!, $domain: String!) {
-          onDataUpdateInGroup(groupId: $groupId, domain: $domain) {
-            nodeId
+        subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
+          onMessageInGroup(groupId: $groupId, domain: $domain) {
             groupId
             domain
-            data {
-              key
-              value
+            nodeStatus {
+              nodeId
+              groupId
+              domain
+              data {
+                key
+                value
+              }
+              timestamp
             }
-            timestamp
           }
         }
       GRAPHQL
@@ -85,11 +89,15 @@ RSpec.describe "Subscription E2E Test", type: :request do
         "Subscription should receive at least one data update"
 
       first_message = received_data.first
-      expect(first_message).to have_key("onDataUpdateInGroup")
+      expect(first_message).to have_key("onMessageInGroup")
 
-      subscription_data = first_message["onDataUpdateInGroup"]
-      expect(subscription_data).not_to be_nil
+      message_data = first_message["onMessageInGroup"]
+      expect(message_data).not_to be_nil
+      expect(message_data["groupId"]).to eq(group_id)
+      expect(message_data["domain"]).to eq(domain)
+      expect(message_data["nodeStatus"]).not_to be_nil
 
+      subscription_data = message_data["nodeStatus"]
       # フィールドの検証
       expect(subscription_data["groupId"]).to eq(group_id),
         "Subscription data groupId should match"
@@ -109,21 +117,25 @@ RSpec.describe "Subscription E2E Test", type: :request do
     end
   end
 
-  describe "dissolveGroup mutation triggers onGroupDissolve subscription" do
+  describe "dissolveGroup mutation triggers onMessageInGroup subscription (GroupDissolvePayload)" do
     it "グループ解散時に購読者に通知が届く" do
       # Setup
       group = create_test_group("Dissolve E2E Test", host_id, domain)
       group_id = group["id"]
       join_test_node(group_id, domain, node_id)
 
-      puts "\n[Test] Testing onGroupDissolve subscription..."
+      puts "\n[Test] Testing onMessageInGroup (GroupDissolvePayload) subscription..."
 
       subscription_query = <<~GRAPHQL
-        subscription OnGroupDissolve($groupId: ID!, $domain: String!) {
-          onGroupDissolve(groupId: $groupId, domain: $domain) {
+        subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
+          onMessageInGroup(groupId: $groupId, domain: $domain) {
             groupId
             domain
-            message
+            groupDissolve {
+              groupId
+              domain
+              message
+            }
           }
         }
       GRAPHQL
@@ -150,8 +162,13 @@ RSpec.describe "Subscription E2E Test", type: :request do
 
       # Verify
       expect(received_data).not_to be_empty
-      dissolve_data = received_data.first["onGroupDissolve"]
-      expect(dissolve_data).not_to be_nil
+      message_data = received_data.first["onMessageInGroup"]
+      expect(message_data).not_to be_nil
+      expect(message_data["groupId"]).to eq(group_id)
+      expect(message_data["domain"]).to eq(domain)
+      expect(message_data["groupDissolve"]).not_to be_nil
+
+      dissolve_data = message_data["groupDissolve"]
       expect(dissolve_data["groupId"]).to eq(group_id)
       expect(dissolve_data["domain"]).to eq(domain)
       expect(dissolve_data["message"]).to include("dissolved")

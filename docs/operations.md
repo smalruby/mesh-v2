@@ -566,7 +566,8 @@ aws dynamodb query \
 3. **TTL 確認**:
 ```graphql
 query {
-  getGroup(groupId: "abc123", domain: "192.168.1.1") {
+  listGroupsByDomain(domain: "192.168.1.1") {
+    id
     expiresAt  # この時刻を過ぎるとグループは削除される
   }
 }

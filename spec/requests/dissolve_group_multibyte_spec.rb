@@ -38,15 +38,18 @@ RSpec.describe "DissolveGroup with Multibyte Data", type: :request do
     # 5. エラーなく成功することを確認
     expect(response["errors"]).to be_nil
     expect(response["data"]["dissolveGroup"]).not_to be_nil
+    # Verify top-level filtering fields
     expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+    expect(response["data"]["dissolveGroup"]["domain"]).to eq(domain)
+
+    expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
 
     # 6. グループが削除されていることを確認
-    get_query = File.read(File.join(__dir__, "../fixtures/queries/get_group.graphql"))
-    get_response = execute_graphql(get_query, {
-      groupId: group_id,
+    list_query = File.read(File.join(__dir__, "../fixtures/queries/list_groups_by_domain.graphql"))
+    list_response = execute_graphql(list_query, {
       domain: domain
     })
-    expect(get_response["data"]["getGroup"]).to be_nil
+    expect(list_response["data"]["listGroupsByDomain"].any? { |g| g["id"] == group_id }).to be_falsey
   end
 
   it "様々なマルチバイト文字（絵文字、中国語、韓国語）でもグループを解散できる" do
@@ -75,6 +78,11 @@ RSpec.describe "DissolveGroup with Multibyte Data", type: :request do
     })
 
     expect(response["errors"]).to be_nil
+    expect(response["data"]["dissolveGroup"]).not_to be_nil
+    # Verify top-level filtering fields
     expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+    expect(response["data"]["dissolveGroup"]["domain"]).to eq(domain)
+
+    expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
   end
 end

@@ -119,7 +119,7 @@ You automatically become the **host** of the created group.
 **How it works:**
 1. Adjust sensor sliders
 2. Values are automatically sent to the group (if changed)
-3. Other nodes in the group will receive updates (when subscriptions are implemented)
+3. Other nodes in the group will receive updates in real-time via the unified subscription
 
 ### 4. Event System
 
@@ -174,7 +174,7 @@ GraphQL client for AWS AppSync with methods:
 ```javascript
 // Mutations
 await client.createGroup(name, hostId, domain)
-await client.joinGroup(groupId, nodeId, nodeName, domain)
+await client.joinGroup(groupId, nodeId, domain)
 await client.dissolveGroup(groupId, hostId, domain)  // Host only
 await client.reportDataByNode(nodeId, groupId, domain, data)
 await client.fireEventsByNode(nodeId, groupId, domain, events)
@@ -183,9 +183,11 @@ await client.fireEventsByNode(nodeId, groupId, domain, events)
 await client.listGroupsByDomain(domain)
 
 // Subscriptions (WebSocket via AppSync)
-client.subscribeToDataUpdates(groupId, domain, callback)
-client.subscribeToBatchEvents(groupId, domain, callback)
-client.subscribeToGroupDissolve(groupId, domain, callback)  // Real-time group dissolution detection
+client.subscribeToMessageInGroup(groupId, domain, {
+  onDataUpdate: (statuses) => { /* handle sensor updates */ },
+  onBatchEvent: (batchEvent) => { /* handle events */ },
+  onGroupDissolve: (dissolveData) => { /* handle dissolution */ }
+})
 ```
 
 #### RateLimiter (mesh-client.js)
@@ -279,9 +281,7 @@ if (detector.hasChanged('temperature', 25)) {
 The prototype has the following implementation status:
 
 1. **Implemented WebSocket Subscriptions**
-   - ✅ `subscribeToGroupDissolve()` - Real-time group dissolution detection (Phase 2-4)
-   - ✅ `subscribeToDataUpdates()` - Real-time sensor data updates (Phase 2-2)
-   - ✅ `subscribeToBatchEvents()` - Real-time batch event notifications (Phase 2-2)
+   - ✅ `subscribeToMessageInGroup()` - Unified subscription for all group messages (data, events, dissolution)
 
 2. **Backend API Status**
    - ✅ `createGroup` - Fully implemented and working
@@ -396,7 +396,14 @@ Events are user-defined and require no code changes. Just enter:
 # Create Group
 mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!) {
   createGroup(name: $name, hostId: $hostId, domain: $domain) {
-    id domain fullId name hostId createdAt
+    id domain fullId name hostId createdAt expiresAt
+  }
+}
+
+# Join Group
+mutation JoinGroup($groupId: ID!, $domain: String!, $nodeId: ID!) {
+  joinGroup(groupId: $groupId, domain: $domain, nodeId: $nodeId) {
+    id name groupId domain
   }
 }
 
@@ -405,10 +412,41 @@ mutation ReportDataByNode(
   $nodeId: ID!
   $groupId: ID!
   $domain: String!
-  $data: [KeyValuePairInput!]!
+  $data: [SensorDataInput!]!
 ) {
   reportDataByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, data: $data) {
-    nodeId groupId data { key value } timestamp
+    groupId
+    domain
+    nodeStatus {
+      nodeId
+      groupId
+      domain
+      data { key value }
+      timestamp
+    }
+  }
+}
+
+# Fire Events
+mutation FireEventsByNode(
+  $nodeId: ID!
+  $groupId: ID!
+  $domain: String!
+  $events: [EventInput!]!
+) {
+  fireEventsByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, events: $events) {
+    groupId
+    domain
+    batchEvent {
+      events {
+        name
+        firedByNodeId
+        payload
+        timestamp
+      }
+      firedByNodeId
+      timestamp
+    }
   }
 }
 ```
@@ -424,32 +462,40 @@ query ListGroupsByDomain($domain: String!) {
 }
 ```
 
-### GraphQL Subscriptions (Future)
+### GraphQL Subscriptions
 
 ```graphql
-# Subscribe to Sensor Data Updates
-subscription OnDataUpdateInGroup($groupId: ID!, $domain: String!) {
-  onDataUpdateInGroup(groupId: $groupId, domain: $domain) {
-    nodeId groupId data { key value } timestamp
-  }
-}
-
-# Subscribe to Batch Events
-subscription OnBatchEventInGroup($groupId: ID!, $domain: String!) {
-  onBatchEventInGroup(groupId: $groupId, domain: $domain) {
-    events {
-      name
-      firedByNodeId
-      payload
+# Subscribe to all messages in a group
+subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
+  onMessageInGroup(groupId: $groupId, domain: $domain) {
+    groupId
+    domain
+    nodeStatus {
+      nodeId
+      groupId
+      domain
+      data { key value }
       timestamp
     }
-  }
-}
-
-# Subscribe to Group Dissolution
-subscription OnGroupDissolve($groupId: ID!, $domain: String!) {
-  onGroupDissolve(groupId: $groupId, domain: $domain) {
-    groupId domain dissolvedAt
+    batchEvent {
+      events {
+        name
+        firedByNodeId
+        groupId
+        domain
+        payload
+        timestamp
+      }
+      firedByNodeId
+      groupId
+      domain
+      timestamp
+    }
+    groupDissolve {
+      groupId
+      domain
+      message
+    }
   }
 }
 ```

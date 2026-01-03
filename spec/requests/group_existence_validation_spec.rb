@@ -14,7 +14,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           groupId: "non-existent-group",
           domain: domain,
           nodeId: node_id
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
@@ -38,6 +38,10 @@ RSpec.describe "Group Existence Validation", type: :request do
           hostId: host_id
         })
         expect(dissolve_response["errors"]).to be_nil
+        expect(dissolve_response["data"]["dissolveGroup"]).not_to be_nil
+        # Verify top-level filtering fields
+        expect(dissolve_response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+        expect(dissolve_response["data"]["dissolveGroup"]["domain"]).to eq(domain)
 
         # 削除されたグループに参加を試みる
         join_query = File.read(File.join(__dir__, "../fixtures/mutations/join_group.graphql"))
@@ -45,7 +49,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           groupId: group_id,
           domain: domain,
           nodeId: node_id
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(join_response["errors"]).not_to be_nil
@@ -67,7 +71,7 @@ RSpec.describe "Group Existence Validation", type: :request do
             {key: "temperature", value: "25.5"},
             {key: "humidity", value: "60"}
           ]
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         # Pipeline resolver with checkGroupExists returns custom error message
@@ -92,6 +96,9 @@ RSpec.describe "Group Existence Validation", type: :request do
           hostId: host_id
         })
         expect(dissolve_response["errors"]).to be_nil
+        expect(dissolve_response["data"]["dissolveGroup"]).not_to be_nil
+        expect(dissolve_response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+        expect(dissolve_response["data"]["dissolveGroup"]["domain"]).to eq(domain)
 
         # 削除されたグループにデータを報告を試みる
         report_query = File.read(File.join(__dir__, "../fixtures/mutations/report_data_by_node.graphql"))
@@ -102,7 +109,7 @@ RSpec.describe "Group Existence Validation", type: :request do
           data: [
             {key: "temperature", value: "25.5"}
           ]
-        })
+        }, suppress_errors: true)
 
         # エラーレスポンス検証
         expect(report_response["errors"]).not_to be_nil
@@ -128,7 +135,10 @@ RSpec.describe "Group Existence Validation", type: :request do
         hostId: host_id
       })
       expect(dissolve_response["errors"]).to be_nil
-      expect(dissolve_response["data"]["dissolveGroup"]["message"]).to include("dissolved")
+      expect(dissolve_response["data"]["dissolveGroup"]).not_to be_nil
+      expect(dissolve_response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
+      expect(dissolve_response["data"]["dissolveGroup"]["domain"]).to eq(domain)
+      expect(dissolve_response["data"]["dissolveGroup"]["groupDissolve"]["message"]).to include("dissolved")
 
       # 新しいノードの参加を試みる（エラーになるべき）
       new_node_id = "new-node-#{Time.now.to_i}"
@@ -137,7 +147,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         groupId: group_id,
         domain: domain,
         nodeId: new_node_id
-      })
+      }, suppress_errors: true)
       expect(join_response["errors"]).not_to be_nil
       expect(join_response["errors"][0]["message"]).to include("not found")
       expect(join_response["errors"][0]["errorType"]).to eq("GroupNotFound")
@@ -149,7 +159,7 @@ RSpec.describe "Group Existence Validation", type: :request do
         domain: domain,
         nodeId: node_id,
         data: [{key: "test", value: "value"}]
-      })
+      }, suppress_errors: true)
       expect(report_response["errors"]).not_to be_nil
       expect(report_response["errors"][0]["message"]).to include("not found")
     end

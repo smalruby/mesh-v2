@@ -15,9 +15,7 @@ const state = {
   sessionStartTime: null,
   sessionTimerId: null,
   heartbeatTimerId: null,
-  dataSubscriptionId: null,
-  batchEventSubscriptionId: null,
-  dissolveSubscriptionId: null,
+  messageSubscriptionId: null,
   sensorData: {
     temperature: 20,
     brightness: 50,
@@ -118,7 +116,7 @@ function setupEventListeners() {
   document.getElementById('disconnectBtn').addEventListener('click', handleDisconnect);
 
   // Events
-  document.getElementById('sendBatchEventBtn').addEventListener('click', handleSendBatchEvent);
+  document.getElementById('sendEventBtn').addEventListener('click', handleSendEvent);
   document.getElementById('clearEventsBtn').addEventListener('click', handleClearEvents);
 }
 
@@ -275,11 +273,15 @@ async function handleCreateGroup() {
       initialData
     );
 
-    // Subscribe to data updates from other nodes
-    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+    // Subscribe to all group messages via unified subscription
+    state.messageSubscriptionId = state.client.subscribeToMessageInGroup(
       state.currentGroup.id,
       state.currentGroup.domain,
-      displayOtherNodesData
+      {
+        onDataUpdate: displayOtherNodesData,
+        onBatchEvent: handleBatchEventReceived,
+        onGroupDissolve: handleGroupDissolved
+      }
     );
 
     // Start heartbeat for host
@@ -391,13 +393,15 @@ async function handleJoinGroup() {
 
     console.log('Joined group:', result);
 
-    // Fetch fresh group info from server to get accurate expiresAt
-    const group = await state.client.getGroup(
-      state.selectedGroup.id,
-      state.selectedGroup.domain
-    );
-
-    state.currentGroup = group;
+    // Use selected group info and join result (expiresAt) to set current group
+    state.currentGroup = {
+      id: state.selectedGroup.id,
+      name: state.selectedGroup.name,
+      domain: state.selectedGroup.domain,
+      hostId: state.selectedGroup.hostId,
+      fullId: `${state.selectedGroup.id}@${state.selectedGroup.domain}`,
+      expiresAt: result.expiresAt
+    };
 
     // Initialize sensor data for this node
     // This immediately shares current sensor state with other group members
@@ -414,25 +418,15 @@ async function handleJoinGroup() {
       initialData
     );
 
-    // Subscribe to data updates from other nodes
-    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+    // Subscribe to all group messages via unified subscription
+    state.messageSubscriptionId = state.client.subscribeToMessageInGroup(
       state.currentGroup.id,
       state.currentGroup.domain,
-      displayOtherNodesData
-    );
-
-    // Subscribe to batch events in group
-    state.batchEventSubscriptionId = state.client.subscribeToBatchEvents(
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      handleBatchEventReceived
-    );
-
-    // Subscribe to group dissolution
-    state.dissolveSubscriptionId = state.client.subscribeToGroupDissolve(
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      handleGroupDissolved
+      {
+        onDataUpdate: displayOtherNodesData,
+        onBatchEvent: handleBatchEventReceived,
+        onGroupDissolve: handleGroupDissolved
+      }
     );
 
     // Stop heartbeat if it was running (e.g. from a previously created group)
@@ -464,22 +458,10 @@ async function handleLeaveGroup() {
 
     console.log('Left group:', result);
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
-    }
-
-    // Unsubscribe from dissolve notifications
-    if (state.dissolveSubscriptionId) {
-      state.client.unsubscribe(state.dissolveSubscriptionId);
-      state.dissolveSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     stopHeartbeat();
@@ -530,16 +512,10 @@ async function handleDissolveGroup() {
 
     console.log('Group dissolved');
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     stopHeartbeat();
@@ -596,16 +572,10 @@ async function handleDisconnect() {
       console.log('Left group by disconnect');
     }
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     // Stop session timer
@@ -716,18 +686,30 @@ async function handleSensorChange(sensorName, value) {
 }
 
 /**
- * Handle send 3 events batch
+ * Handle send single event
  */
-async function handleSendBatchEvent() {
+async function handleSendEvent() {
   if (!state.currentGroup) {
     showError('eventError', 'Not in a group');
     return;
   }
 
+  const name = document.getElementById('eventName').value.trim();
+  const payload = document.getElementById('eventPayload').value.trim();
+
+  if (!name) {
+    showError('eventError', 'Please enter an event name');
+    return;
+  }
+
+  // Check rate limit
+  if (!eventRateLimiter.canMakeCall()) {
+    showError('eventError', 'Event rate limit exceeded (2 per second)');
+    return;
+  }
+
   const events = [
-    { eventName: 'batch-1', payload: 'first', firedAt: new Date().toISOString() },
-    { eventName: 'batch-2', payload: 'second', firedAt: new Date().toISOString() },
-    { eventName: 'batch-3', payload: 'third', firedAt: new Date().toISOString() }
+    { eventName: name, payload: payload || null, firedAt: new Date().toISOString() }
   ];
 
   try {
@@ -738,14 +720,18 @@ async function handleSendBatchEvent() {
       events
     );
 
-    console.log('Batch events sent:', result);
-    showSuccess('eventSuccess', 'Sent 3 events in one batch');
+    console.log('Event sent:', result);
+    showSuccess('eventSuccess', `Sent event: ${name}`);
+    
+    // Clear inputs
+    document.getElementById('eventName').value = '';
+    document.getElementById('eventPayload').value = '';
   } catch (error) {
-    console.error('Failed to send batch events:', error);
-    showError('eventError', `Failed to send batch: ${error.message}`);
+    console.error('Failed to send event:', error);
+    showError('eventError', `Failed to send event: ${error.message}`);
     
     if (shouldDisconnectOnError(error)) {
-      handleDisconnect();
+      handleGroupDissolved({ message: 'Connection lost' });
     }
   }
 }
@@ -815,23 +801,13 @@ function handleBatchEventReceived(batchEvent) {
 function handleGroupDissolved(dissolveData) {
   console.log('Group has been dissolved:', dissolveData);
 
-  // Unsubscribe from all active subscriptions
-  if (state.dataSubscriptionId) {
-    state.client.unsubscribe(state.dataSubscriptionId);
-    state.dataSubscriptionId = null;
+  // Unsubscribe from all group messages
+  if (state.messageSubscriptionId) {
+    state.client.unsubscribe(state.messageSubscriptionId);
+    state.messageSubscriptionId = null;
   }
 
-  if (state.batchEventSubscriptionId) {
-    state.client.unsubscribe(state.batchEventSubscriptionId);
-    state.batchEventSubscriptionId = null;
-  }
-
-      if (state.dissolveSubscriptionId) {
-        state.client.unsubscribe(state.dissolveSubscriptionId);
-        state.dissolveSubscriptionId = null;
-      }
-  
-      stopHeartbeat();
+  stopHeartbeat();
   
       // Clear group state
       state.currentGroup = null;
@@ -1062,7 +1038,7 @@ function updateUI() {
     leaveBtn.style.display = 'none';
   }
 
-  document.getElementById('sendBatchEventBtn').disabled = !inGroup;
+  document.getElementById('sendEventBtn').disabled = !inGroup;
 
   // Update rate status
   updateRateStatus();

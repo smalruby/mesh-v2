@@ -42,7 +42,7 @@ RSpec.describe "Member Heartbeat API", type: :request do
         groupId: "non-existent-group",
         domain: domain,
         nodeId: member_id
-      })
+      }, suppress_errors: true)
 
       expect(response["errors"]).not_to be_nil
       expect(response["errors"][0]["errorType"]).to eq("GroupNotFound")
@@ -59,7 +59,7 @@ RSpec.describe "Member Heartbeat API", type: :request do
         groupId: group_id,
         domain: domain,
         nodeId: "non-existent-node"
-      })
+      }, suppress_errors: true)
 
       # Note: 現状の実装では、Nodeの存在チェックはUpdateItemのConditionExpressionで行われる
       # DynamoDB:ConditionalCheckFailedException が返るはずだが、AppSync function側で
@@ -89,7 +89,7 @@ RSpec.describe "Member Heartbeat API", type: :request do
         groupId: group_id,
         domain: domain,
         nodeId: member_id
-      })
+      }, suppress_errors: true)
 
       # GroupNotFoundエラーを期待
       expect(response["errors"]).not_to be_nil

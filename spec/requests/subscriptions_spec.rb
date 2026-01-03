@@ -1,10 +1,10 @@
 require "spec_helper"
 
 RSpec.describe "Subscriptions API", type: :request do
-  let(:domain) { "test-sub-#{Time.now.to_i}.example.com" }
-  let(:host_id) { "host-sub-#{Time.now.to_i}" }
-  let(:node1_id) { "node1-sub-#{Time.now.to_i}" }
-  let(:node2_id) { "node2-sub-#{Time.now.to_i}" }
+  let(:domain) { "test-sub-" + Time.now.to_i.to_s + ".example.com" }
+  let(:host_id) { "host-sub-" + Time.now.to_i.to_s }
+  let(:node1_id) { "node1-sub-" + Time.now.to_i.to_s }
+  let(:node2_id) { "node2-sub-" + Time.now.to_i.to_s }
 
   describe "Subscription schema validation" do
     it "GraphQLスキーマにSubscription型が定義されている" do
@@ -13,40 +13,25 @@ RSpec.describe "Subscriptions API", type: :request do
       # Subscription型の存在確認
       expect(schema_content).to include("type Subscription")
 
-      # 各Subscriptionフィールドの存在確認
-      expect(schema_content).to include("onDataUpdateInGroup")
-      expect(schema_content).to include("onGroupDissolve")
+      # 統合されたSubscriptionフィールドの存在確認
+      expect(schema_content).to include("onMessageInGroup")
     end
 
     it "@aws_subscribeディレクティブが正しく定義されている" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
-      # onDataUpdateInGroupのディレクティブ確認
+      # onMessageInGroupのディレクティブ確認
+      # reportDataByNode, fireEventsByNode, dissolveGroup を購読
       expect(schema_content).to match(
-        /onDataUpdateInGroup.*@aws_subscribe\(mutations:\s*\["reportDataByNode"\]\)/m
+        /onMessageInGroup.*@aws_subscribe\(mutations:\s*\["reportDataByNode", "fireEventsByNode", "dissolveGroup"\]\)/m
       )
-
-      # Note: onGroupDissolveは型の不一致により現在コメントアウト
-      # 将来的な実装で有効化予定
     end
 
-    it "Subscriptionの戻り値型がnullable（非必須）である" do
+    it "Subscriptionの戻り値型がMeshMessage（Union）である" do
       schema_content = File.read(File.join(__dir__, "../../graphql/schema.graphql"))
 
-      # onDataUpdateInGroup should return NodeStatus (nullable, not NodeStatus!)
       expect(schema_content).to match(
-        /onDataUpdateInGroup\([^)]+\):\s*NodeStatus\s+@aws_subscribe/
-      )
-      expect(schema_content).not_to match(
-        /onDataUpdateInGroup\([^)]+\):\s*NodeStatus!\s+@aws_subscribe/
-      )
-
-      # onGroupDissolve should return GroupDissolvePayload (nullable, not GroupDissolvePayload!)
-      expect(schema_content).to match(
-        /onGroupDissolve\([^)]+\):\s*GroupDissolvePayload\s+@aws_subscribe/
-      )
-      expect(schema_content).not_to match(
-        /onGroupDissolve\([^)]+\):\s*GroupDissolvePayload!\s+@aws_subscribe/
+        /onMessageInGroup\([^)]+\):\s*MeshMessage\s+@aws_subscribe/
       )
     end
   end
@@ -54,14 +39,12 @@ RSpec.describe "Subscriptions API", type: :request do
   describe "Subscription behavior tests" do
     before(:all) do
       # Subscription動作テストはWebSocket接続が必要
-      # ここでは、Mutationが正しく実行できることを確認し、
-      # Subscriptionの動作は手動テストまたは別のE2Eテストで確認する
       puts "\n=== Subscription Behavior Tests ==="
       puts "Note: These tests verify mutations work correctly."
       puts "WebSocket subscription behavior should be verified manually or with E2E tests."
     end
 
-    context "onDataUpdateInGroup の前提条件" do
+    context "onMessageInGroup の前提条件" do
       it "reportDataByNode mutation が正常に動作する" do
         # グループ作成
         group = create_test_group("Sub Test Group", host_id, domain)
@@ -84,17 +67,17 @@ RSpec.describe "Subscriptions API", type: :request do
 
         expect(response["errors"]).to be_nil
         expect(response["data"]["reportDataByNode"]).not_to be_nil
-        expect(response["data"]["reportDataByNode"]["nodeId"]).to eq(node1_id)
-        expect(response["data"]["reportDataByNode"]["data"].length).to eq(2)
+        # Verify top-level filtering fields
+        expect(response["data"]["reportDataByNode"]["groupId"]).to eq(group_id)
+        expect(response["data"]["reportDataByNode"]["domain"]).to eq(domain)
+        # MeshMessage has nodeStatus field
+        expect(response["data"]["reportDataByNode"]["nodeStatus"]).not_to be_nil
+        expect(response["data"]["reportDataByNode"]["nodeStatus"]["nodeId"]).to eq(node1_id)
+        expect(response["data"]["reportDataByNode"]["nodeStatus"]["data"].length).to eq(2)
 
-        # Subscription期待動作:
-        # - onDataUpdateInGroup(groupId: group_id, domain: domain) を購読中のクライアントに
-        # - NodeStatus が送信される
-        puts "  ✓ reportDataByNode executed - onDataUpdateInGroup should trigger"
+        puts "  ✓ reportDataByNode executed - onMessageInGroup should trigger"
       end
-    end
 
-    context "onGroupDissolve の前提条件" do
       it "dissolveGroup mutation が正常に動作する" do
         # グループ作成
         group = create_test_group("Dissolve Test Group", host_id, domain)
@@ -110,13 +93,15 @@ RSpec.describe "Subscriptions API", type: :request do
 
         expect(response["errors"]).to be_nil
         expect(response["data"]["dissolveGroup"]).not_to be_nil
+        # Verify top-level filtering fields
         expect(response["data"]["dissolveGroup"]["groupId"]).to eq(group_id)
-        expect(response["data"]["dissolveGroup"]["message"]).to include("dissolved")
+        expect(response["data"]["dissolveGroup"]["domain"]).to eq(domain)
+        # MeshMessage has groupDissolve field
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]).not_to be_nil
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["groupId"]).to eq(group_id)
+        expect(response["data"]["dissolveGroup"]["groupDissolve"]["message"]).to include("dissolved")
 
-        # Subscription期待動作:
-        # - onGroupDissolve(groupId: group_id, domain: domain) を購読中のクライアントに
-        # - GroupDissolvePayload が送信される
-        puts "  ✓ dissolveGroup executed - onGroupDissolve should trigger"
+        puts "  ✓ dissolveGroup executed - onMessageInGroup should trigger"
       end
     end
 
@@ -134,9 +119,6 @@ RSpec.describe "Subscriptions API", type: :request do
         join_test_node(group1_id, domain, "#{node1_id}-g1")
         join_test_node(group2_id, domain, "#{node1_id}-g2")
 
-        # Subscription期待動作:
-        # - onDataUpdateInGroup(groupId: group1_id) を購読中のクライアントは
-        # - group1_id のデータのみ受信し、group2_id のデータは受信しない
         puts "  ✓ Multiple groups created - filtering should work by groupId"
       end
     end
@@ -158,13 +140,22 @@ RSpec.describe "Subscriptions API", type: :request do
       puts "   API_KEY='#{ENV["APPSYNC_API_KEY"]}'"
       puts "   WS_URL=$(echo $API_URL | sed 's/https:/wss:/g' | sed 's/graphql$/graphql\\/connect/g')"
       puts ""
-      puts "3. Subscribe to onDataUpdateInGroup:"
+      puts "3. Subscribe to onMessageInGroup:"
       puts "   subscription {"
-      puts '     onDataUpdateInGroup(groupId: "YOUR_GROUP_ID", domain: "YOUR_DOMAIN") {'
-      puts "       nodeId"
-      puts "       groupId"
-      puts "       data { key value }"
-      puts "       timestamp"
+      puts '     onMessageInGroup(groupId: "YOUR_GROUP_ID", domain: "YOUR_DOMAIN") {'
+      puts "       ... on NodeStatus {"
+      puts "         nodeId"
+      puts "         data { key value }"
+      puts "         timestamp"
+      puts "       }"
+      puts "       ... on BatchEvent {"
+      puts "         firedByNodeId"
+      puts "         events { name payload }"
+      puts "         timestamp"
+      puts "       }"
+      puts "       ... on GroupDissolvePayload {"
+      puts "         message"
+      puts "       }"
       puts "     }"
       puts "   }"
       puts ""
@@ -175,7 +166,6 @@ RSpec.describe "Subscriptions API", type: :request do
       puts ""
       puts "=" * 80
 
-      # このテストは常にパスする（ガイド表示のみ）
       expect(true).to be true
     end
   end

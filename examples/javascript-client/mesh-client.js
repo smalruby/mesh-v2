@@ -184,32 +184,6 @@ class MeshClient {
   }
 
   /**
-   * Get a specific group by groupId and domain
-   */
-  async getGroup(groupId, domain) {
-    const query = `
-      query GetGroup($groupId: ID!, $domain: String!) {
-        getGroup(groupId: $groupId, domain: $domain) {
-          id
-          domain
-          fullId
-          name
-          hostId
-          createdAt
-          expiresAt
-        }
-      }
-    `;
-
-    const data = await this.execute(query, {
-      groupId,
-      domain: domain || this.domain
-    });
-
-    return data.getGroup;
-  }
-
-  /**
    * Get node status by nodeId
    */
   async getNodeStatus(nodeId) {
@@ -315,7 +289,11 @@ class MeshClient {
         dissolveGroup(groupId: $groupId, hostId: $hostId, domain: $domain) {
           groupId
           domain
-          message
+          groupDissolve {
+            groupId
+            domain
+            message
+          }
         }
       }
     `;
@@ -336,14 +314,18 @@ class MeshClient {
     const query = `
       mutation ReportDataByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $data: [SensorDataInput!]!) {
         reportDataByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, data: $data) {
-          nodeId
           groupId
           domain
-          data {
-            key
-            value
+          nodeStatus {
+            nodeId
+            groupId
+            domain
+            data {
+              key
+              value
+            }
+            timestamp
           }
-          timestamp
         }
       }
     `;
@@ -360,24 +342,27 @@ class MeshClient {
 
   /**
    * Fire multiple events in a batch
-
    */
   async fireEventsByNode(nodeId, groupId, domain, events) {
     const query = `
       mutation FireEventsByNode($nodeId: ID!, $groupId: ID!, $domain: String!, $events: [EventInput!]!) {
-        fireEventsByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, nodeId: $nodeId, events: $events) {
-          events {
-            name
+        fireEventsByNode(nodeId: $nodeId, groupId: $groupId, domain: $domain, events: $events) {
+          groupId
+          domain
+          batchEvent {
+            events {
+              name
+              firedByNodeId
+              groupId
+              domain
+              payload
+              timestamp
+            }
             firedByNodeId
             groupId
             domain
-            payload
             timestamp
           }
-          firedByNodeId
-          groupId
-          domain
-          timestamp
         }
       }
     `;
@@ -393,87 +378,55 @@ class MeshClient {
   }
 
   /**
-   * Subscribe to sensor data updates via WebSocket
+   * Subscribe to all group messages via unified subscription
+   * @param {string} groupId - Group ID
+   * @param {string} domain - Domain
+   * @param {Object} callbacks - Callback functions for each message type
+   * @param {Function} callbacks.onDataUpdate - Called when nodeStatus is received
+   * @param {Function} callbacks.onBatchEvent - Called when batchEvent is received
+   * @param {Function} callbacks.onGroupDissolve - Called when groupDissolve is received
+   * @returns {string} Subscription ID
    */
-  subscribeToDataUpdates(groupId, domain, callback) {
-    console.log('Subscription: onDataUpdateInGroup', { groupId, domain });
+  subscribeToMessageInGroup(groupId, domain, callbacks) {
+    console.log('Subscription: onMessageInGroup', { groupId, domain });
 
-    const subscriptionId = `data-${groupId}`;
-    this.eventHandlers.set(subscriptionId, callback);
+    const subscriptionId = `message-${groupId}`;
 
-    // GraphQL subscription query
+    // GraphQL subscription query - unified
     const subscription = `
-      subscription OnDataUpdateInGroup($groupId: ID!, $domain: String!) {
-        onDataUpdateInGroup(groupId: $groupId, domain: $domain) {
-          nodeId
+      subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
+        onMessageInGroup(groupId: $groupId, domain: $domain) {
           groupId
           domain
-          data {
-            key
-            value
+          nodeStatus {
+            nodeId
+            groupId
+            domain
+            data {
+              key
+              value
+            }
+            timestamp
           }
-          timestamp
-        }
-      }
-    `;
-
-    // Subscribe using Amplify
-    const sub = this.graphqlClient.graphql({
-      query: subscription,
-      variables: { groupId, domain: domain || this.domain }
-    }).subscribe({
-      next: ({ data }) => {
-        console.log('Subscription data received:', data);
-        if (callback && data && data.onDataUpdateInGroup) {
-          // Fetch all group statuses when a data update is received
-          this.listGroupStatuses(groupId, domain || this.domain)
-            .then(statuses => callback(statuses))
-            .catch(error => console.error('Error fetching group statuses:', error));
-        }
-      },
-      error: (error) => {
-        console.error('Subscription error:', error);
-        if (error.errors && error.errors.length > 0) {
-          console.error('GraphQL errors:', error.errors);
-          error.errors.forEach(err => {
-            console.error('- Error:', err.message);
-            if (err.path) console.error('  Path:', err.path);
-            if (err.locations) console.error('  Locations:', err.locations);
-          });
-        }
-      }
-    });
-
-    this.subscriptions.set(subscriptionId, sub);
-
-    return subscriptionId;
-  }
-
-  /**
-   * Subscribe to batch events in group via WebSocket
-   */
-  subscribeToBatchEvents(groupId, domain, callback) {
-    console.log('Subscription: onBatchEventInGroup', { groupId, domain });
-
-    const subscriptionId = `batch-event-${groupId}`;
-    this.eventHandlers.set(subscriptionId, callback);
-
-    // GraphQL subscription query
-    const subscription = `
-      subscription OnBatchEventInGroup($groupId: ID!, $domain: String!) {
-        onBatchEventInGroup(groupId: $groupId, domain: $domain) {
-          events {
-            name
+          batchEvent {
+            events {
+              name
+              firedByNodeId
+              groupId
+              domain
+              payload
+              timestamp
+            }
             firedByNodeId
             groupId
             domain
-            payload
             timestamp
           }
-          firedByNodeId
-          groupId
-          domain
-          timestamp
+          groupDissolve {
+            groupId
+            domain
+            message
+          }
         }
       }
     `;
@@ -484,54 +437,29 @@ class MeshClient {
       variables: { groupId, domain: domain || this.domain }
     }).subscribe({
       next: ({ data }) => {
-        console.log('Batch event received:', data);
-        if (callback && data && data.onBatchEventInGroup) {
-          callback(data.onBatchEventInGroup);
+        console.log('Unified subscription data received:', data);
+
+        if (!data || !data.onMessageInGroup) return;
+
+        const message = data.onMessageInGroup;
+
+        // Route to appropriate callback based on which field is non-null
+        if (message.nodeStatus && callbacks.onDataUpdate) {
+          console.log('Received message type: nodeStatus');
+          // When nodeStatus is received, fetch all group statuses
+          this.listGroupStatuses(groupId, domain || this.domain)
+            .then(statuses => callbacks.onDataUpdate(statuses))
+            .catch(error => console.error('Error fetching group statuses:', error));
+        } else if (message.batchEvent && callbacks.onBatchEvent) {
+          console.log('Received message type: batchEvent');
+          callbacks.onBatchEvent(message.batchEvent);
+        } else if (message.groupDissolve && callbacks.onGroupDissolve) {
+          console.log('Received message type: groupDissolve');
+          callbacks.onGroupDissolve(message.groupDissolve);
         }
       },
       error: (error) => {
-        console.error('Batch event subscription error:', error);
-      }
-    });
-
-    this.subscriptions.set(subscriptionId, sub);
-
-    return subscriptionId;
-  }
-
-  /**
-   * Subscribe to group dissolution via WebSocket
-   */
-  subscribeToGroupDissolve(groupId, domain, callback) {
-    console.log('Subscription: onGroupDissolve', { groupId, domain });
-
-    const subscriptionId = `dissolve-${groupId}`;
-    this.eventHandlers.set(subscriptionId, callback);
-
-    // GraphQL subscription query
-    const subscription = `
-      subscription OnGroupDissolve($groupId: ID!, $domain: String!) {
-        onGroupDissolve(groupId: $groupId, domain: $domain) {
-          groupId
-          domain
-          message
-        }
-      }
-    `;
-
-    // Subscribe using Amplify
-    const sub = this.graphqlClient.graphql({
-      query: subscription,
-      variables: { groupId, domain: domain || this.domain }
-    }).subscribe({
-      next: ({ data }) => {
-        console.log('Group dissolved:', data);
-        if (callback && data && data.onGroupDissolve) {
-          callback(data.onGroupDissolve);
-        }
-      },
-      error: (error) => {
-        console.error('Dissolve subscription error:', error);
+        console.error('Unified subscription error:', error);
         if (error.errors && error.errors.length > 0) {
           console.error('GraphQL errors:', error.errors);
           error.errors.forEach(err => {

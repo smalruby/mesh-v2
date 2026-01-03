@@ -884,7 +884,6 @@ type Group {
 ### Queries
 
 - `listGroupsByDomain`: List all groups in a domain
-- `getGroup`: Get group by groupId + domain
 
 ## Future Improvements
 
