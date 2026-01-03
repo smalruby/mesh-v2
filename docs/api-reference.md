@@ -228,7 +228,7 @@ mutation JoinGroup($groupId: ID!, $nodeId: ID!, $domain: String!) {
 
 ### reportDataByNode
 
-ノードがセンサーデータを報告します（`onDataUpdateInGroup` subscription をトリガー）。
+ノードがセンサーデータを報告します（`onMessageInGroup` subscription をトリガー）。
 
 ```graphql
 mutation ReportDataByNode(
@@ -257,7 +257,7 @@ mutation ReportDataByNode(
 
 ### fireEventsByNode
 
-ノードが複数のイベントを一度に送信します（`onBatchEventInGroup` subscription をトリガー）。
+ノードが複数のイベントを一度に送信します（`onMessageInGroup` subscription をトリガー）。
 
 ```graphql
 mutation FireEventsByNode(
@@ -307,7 +307,7 @@ mutation LeaveGroup($groupId: ID!, $domain: String!, $nodeId: ID!) {
 
 ### dissolveGroup
 
-グループを解散します（`onGroupDissolve` subscription をトリガー）。
+グループを解散します（`onMessageInGroup` subscription をトリガー）。
 
 ```graphql
 mutation DissolveGroup($groupId: ID!, $domain: String!, $hostId: ID!) {
@@ -319,7 +319,7 @@ mutation DissolveGroup($groupId: ID!, $domain: String!, $hostId: ID!) {
 }
 ```
 
-**用途**: ホストがグループ全体を解散する際に使用。すべてのメンバーに `onGroupDissolve` subscription が配信されます。
+**用途**: ホストがグループ全体を解散する際に使用。すべてのメンバーに `onMessageInGroup` subscription が配信されます。
 
 **注意**: `dissolveGroup` はホスト専用の操作です。メンバーの退出には `leaveGroup` を使用してください。
 
@@ -374,109 +374,115 @@ mutation SendMemberHeartbeat($groupId: ID!, $domain: String!, $nodeId: ID!) {
 
 Mesh v2 は AWS AppSync GraphQL Subscriptions over WebSocket を使用したリアルタイム通知をサポートしています。
 
-### onDataUpdateInGroup
+### 重要な変更（Issue #500 関連）
 
-**目的**: リアルタイムでグループ内のノードデータ更新を購読
+**統合された Subscription**: 以前は個別の subscription (`onDataUpdateInGroup`, `onBatchEventInGroup`, `onGroupDissolve`) がありましたが、現在は **`onMessageInGroup`** という単一の subscription に統合されています。
 
-**トリガー**: `reportDataByNode` mutation
+この変更により:
+- WebSocket ストリームが1つになり、送信順序（Mutation実行順序）が受信側でも保証される
+- クライアント実装がシンプルになる
+- ネットワーク接続数が削減される
+
+### onMessageInGroup
+
+**目的**: グループ内のすべてのメッセージ（データ更新、イベント、解散通知）を統合して購読
+
+**トリガー**: `reportDataByNode`, `fireEventsByNode`, `dissolveGroup` mutation
 
 **パラメータ**:
 - `groupId: ID!` - 購読するグループ ID
 - `domain: String!` - グループのドメイン
 
-**戻り値**: `NodeStatus!`
+**戻り値**: `MeshMessage!`
 ```graphql
 {
-  nodeId: ID!
-  groupId: ID!
-  domain: String!
-  data: [SensorData!]!
-  timestamp: AWSDateTime!
+  groupId: ID!              # Subscription フィルタリング用
+  domain: String!           # Subscription フィルタリング用
+  nodeStatus: NodeStatus    # reportDataByNode からのデータ更新
+  batchEvent: BatchEvent    # fireEventsByNode からのイベント
+  groupDissolve: GroupDissolvePayload  # dissolveGroup からの解散通知
 }
 ```
 
 **使用例**:
 ```graphql
 subscription {
-  onDataUpdateInGroup(groupId: "group-123", domain: "example.com") {
-    nodeId
-    groupId
-    data {
-      key
-      value
-    }
-    timestamp
-  }
-}
-```
-
----
-
-### onBatchEventInGroup
-
-**目的**: 複数イベントを一度に送信（1回の Subscription を発火）
-
-**トリガー**: `fireEventsByNode` mutation
-
-**パラメータ**:
-- `groupId: ID!` - 購読するグループ ID
-- `domain: String!` - グループのドメイン
-
-**戻り値**: `BatchEvent!`
-```graphql
-{
-  events: [Event!]!
-  firedByNodeId: ID!
-  groupId: ID!
-  domain: String!
-  timestamp: AWSDateTime!
-}
-```
-
-**使用例**:
-```graphql
-subscription {
-  onBatchEventInGroup(groupId: "group-123", domain: "example.com") {
-    events {
-      name
-      firedByNodeId
-      payload
-      timestamp
-    }
-  }
-}
-```
-
----
-
-### onGroupDissolve
-
-**目的**: リアルタイムでグループ解散を購読
-
-**トリガー**: `dissolveGroup` mutation
-
-**パラメータ**:
-- `groupId: ID!` - 購読するグループ ID
-- `domain: String!` - グループのドメイン
-
-**戻り値**: `GroupDissolvePayload!`
-```graphql
-{
-  groupId: ID!
-  domain: String!
-  message: String!
-}
-```
-
-**使用例**:
-```graphql
-subscription {
-  onGroupDissolve(groupId: "group-123", domain: "example.com") {
+  onMessageInGroup(groupId: "group-123", domain: "example.com") {
     groupId
     domain
-    message
+    nodeStatus {
+      nodeId
+      groupId
+      domain
+      data {
+        key
+        value
+      }
+      timestamp
+    }
+    batchEvent {
+      events {
+        name
+        firedByNodeId
+        payload
+        timestamp
+      }
+      firedByNodeId
+      groupId
+      domain
+      timestamp
+    }
+    groupDissolve {
+      groupId
+      domain
+      message
+    }
   }
 }
+```
+
+**クライアント実装の注意点**:
+- `MeshMessage` は各フィールドがオプショナル（null 可能）です
+- 受信したメッセージのどのフィールドが設定されているかを確認して、適切に処理してください
+- 例: `nodeStatus` が設定されていればデータ更新、`batchEvent` が設定されていればイベント、`groupDissolve` が設定されていれば解散通知
+
+**JavaScript クライアント実装例**:
+```javascript
+// Subscription を購読
+subscription = client.subscribe({
+  query: gql`
+    subscription OnMessageInGroup($groupId: ID!, $domain: String!) {
+      onMessageInGroup(groupId: $groupId, domain: $domain) {
+        nodeStatus { nodeId data { key value } }
+        batchEvent { events { name payload } }
+        groupDissolve { message }
+      }
+    }
+  `,
+  variables: { groupId, domain }
+});
+
+subscription.subscribe({
+  next: (message) => {
+    const { nodeStatus, batchEvent, groupDissolve } = message.data.onMessageInGroup;
+
+    if (nodeStatus) {
+      // データ更新を処理
+      console.log('Data update:', nodeStatus);
+    }
+
+    if (batchEvent) {
+      // イベントを処理
+      console.log('Batch event:', batchEvent);
+    }
+
+    if (groupDissolve) {
+      // グループ解散を処理
+      console.log('Group dissolved:', groupDissolve);
+      // 切断処理など
+    }
+  }
+});
 ```
 
 ---
@@ -498,7 +504,7 @@ subscription {
 - ✅ @aws_subscribe ディレクティブが正しく定義されている
 - ✅ Mutations (reportDataByNode, fireEventsByNode, dissolveGroup) が正しく動作する
 - ✅ 複数のグループが適切なフィルタリングで共存できる
-- ✅ onGroupDissolve subscription が正しくトリガーされる
+- ✅ onMessageInGroup (groupDissolve) が正しくトリガーされる
 
 テストを実行:
 ```bash
@@ -695,6 +701,6 @@ AWS AppSync のデフォルトのレート制限が適用されます:
 
 ---
 
-**Last Updated**: 2026-01-01
+**Last Updated**: 2026-01-03
 **Phase**: 3 - Documentation Consolidation
-**Status**: ✅ Subscriptions と Error Types を統合（完全な API リファレンスは Phase 4 で追加予定）
+**Status**: ✅ Subscription を `onMessageInGroup` に統合（Issue #500 関連）

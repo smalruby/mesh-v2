@@ -328,6 +328,36 @@ query IntrospectionQuery {
 }
 ```
 
+#### テスト4: 統合された Subscription の購読 (onMessageInGroup)
+
+`wscat` または AppSync Console の **Queries** タブで、統合された Subscription が正しく動作することを確認します。
+
+```graphql
+subscription OnMessageInGroup {
+  onMessageInGroup(groupId: "test-group", domain: "test-domain") {
+    groupId
+    domain
+    nodeStatus {
+      nodeId
+      data {
+        key
+        value
+      }
+    }
+    batchEvent {
+      events {
+        name
+      }
+    }
+    groupDissolve {
+      message
+    }
+  }
+}
+```
+
+購読した状態で、別のタブから `reportDataByNode` mutation を実行し、データがリアルタイムで届くことを確認してください。
+
 ### 7.3 CLIからのテスト
 
 `curl` コマンドでAPIをテストすることもできます。

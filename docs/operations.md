@@ -507,7 +507,7 @@ npx cdk deploy --rollback
 1. **パラメータ確認**:
 ```javascript
 // Subscription
-onDataUpdateInGroup(groupId: "abc123", domain: "192.168.1.1")
+onMessageInGroup(groupId: "abc123", domain: "192.168.1.1")
 
 // Mutation (一致する必要あり)
 reportDataByNode(groupId: "abc123", domain: "192.168.1.1", ...)
