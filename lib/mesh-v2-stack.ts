@@ -12,8 +12,8 @@ export class MeshV2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Stage取得（デフォルト: stg）
-    const stage = this.node.tryGetContext('stage') || 'stg';
+    // Stage取得（優先順位: --context stage=..., .envのSTAGE, デフォルト: stg）
+    const stage = this.node.tryGetContext('stage') || process.env.STAGE || 'stg';
     const stageSuffix = stage === 'prod' ? '' : `-${stage}`;
 
     // Stack全体にタグ付与
