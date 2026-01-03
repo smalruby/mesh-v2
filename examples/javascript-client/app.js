@@ -116,7 +116,7 @@ function setupEventListeners() {
   document.getElementById('disconnectBtn').addEventListener('click', handleDisconnect);
 
   // Events
-  document.getElementById('sendBatchEventBtn').addEventListener('click', handleSendBatchEvent);
+  document.getElementById('sendEventBtn').addEventListener('click', handleSendEvent);
   document.getElementById('clearEventsBtn').addEventListener('click', handleClearEvents);
 }
 
@@ -393,13 +393,15 @@ async function handleJoinGroup() {
 
     console.log('Joined group:', result);
 
-    // Fetch fresh group info from server to get accurate expiresAt
-    const group = await state.client.getGroup(
-      state.selectedGroup.id,
-      state.selectedGroup.domain
-    );
-
-    state.currentGroup = group;
+    // Use selected group info and join result (expiresAt) to set current group
+    state.currentGroup = {
+      id: state.selectedGroup.id,
+      name: state.selectedGroup.name,
+      domain: state.selectedGroup.domain,
+      hostId: state.selectedGroup.hostId,
+      fullId: `${state.selectedGroup.id}@${state.selectedGroup.domain}`,
+      expiresAt: result.expiresAt
+    };
 
     // Initialize sensor data for this node
     // This immediately shares current sensor state with other group members
@@ -684,18 +686,30 @@ async function handleSensorChange(sensorName, value) {
 }
 
 /**
- * Handle send 3 events batch
+ * Handle send single event
  */
-async function handleSendBatchEvent() {
+async function handleSendEvent() {
   if (!state.currentGroup) {
     showError('eventError', 'Not in a group');
     return;
   }
 
+  const name = document.getElementById('eventName').value.trim();
+  const payload = document.getElementById('eventPayload').value.trim();
+
+  if (!name) {
+    showError('eventError', 'Please enter an event name');
+    return;
+  }
+
+  // Check rate limit
+  if (!eventRateLimiter.canMakeCall()) {
+    showError('eventError', 'Event rate limit exceeded (2 per second)');
+    return;
+  }
+
   const events = [
-    { eventName: 'batch-1', payload: 'first', firedAt: new Date().toISOString() },
-    { eventName: 'batch-2', payload: 'second', firedAt: new Date().toISOString() },
-    { eventName: 'batch-3', payload: 'third', firedAt: new Date().toISOString() }
+    { eventName: name, payload: payload || null, firedAt: new Date().toISOString() }
   ];
 
   try {
@@ -706,14 +720,18 @@ async function handleSendBatchEvent() {
       events
     );
 
-    console.log('Batch events sent:', result);
-    showSuccess('eventSuccess', 'Sent 3 events in one batch');
+    console.log('Event sent:', result);
+    showSuccess('eventSuccess', `Sent event: ${name}`);
+    
+    // Clear inputs
+    document.getElementById('eventName').value = '';
+    document.getElementById('eventPayload').value = '';
   } catch (error) {
-    console.error('Failed to send batch events:', error);
-    showError('eventError', `Failed to send batch: ${error.message}`);
+    console.error('Failed to send event:', error);
+    showError('eventError', `Failed to send event: ${error.message}`);
     
     if (shouldDisconnectOnError(error)) {
-      handleDisconnect();
+      handleGroupDissolved({ message: 'Connection lost' });
     }
   }
 }
@@ -1020,7 +1038,7 @@ function updateUI() {
     leaveBtn.style.display = 'none';
   }
 
-  document.getElementById('sendBatchEventBtn').disabled = !inGroup;
+  document.getElementById('sendEventBtn').disabled = !inGroup;
 
   // Update rate status
   updateRateStatus();

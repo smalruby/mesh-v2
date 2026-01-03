@@ -184,32 +184,6 @@ class MeshClient {
   }
 
   /**
-   * Get a specific group by groupId and domain
-   */
-  async getGroup(groupId, domain) {
-    const query = `
-      query GetGroup($groupId: ID!, $domain: String!) {
-        getGroup(groupId: $groupId, domain: $domain) {
-          id
-          domain
-          fullId
-          name
-          hostId
-          createdAt
-          expiresAt
-        }
-      }
-    `;
-
-    const data = await this.execute(query, {
-      groupId,
-      domain: domain || this.domain
-    });
-
-    return data.getGroup;
-  }
-
-  /**
    * Get node status by nodeId
    */
   async getNodeStatus(nodeId) {
@@ -471,13 +445,16 @@ class MeshClient {
 
         // Route to appropriate callback based on which field is non-null
         if (message.nodeStatus && callbacks.onDataUpdate) {
+          console.log('Received message type: nodeStatus');
           // When nodeStatus is received, fetch all group statuses
           this.listGroupStatuses(groupId, domain || this.domain)
             .then(statuses => callbacks.onDataUpdate(statuses))
             .catch(error => console.error('Error fetching group statuses:', error));
         } else if (message.batchEvent && callbacks.onBatchEvent) {
+          console.log('Received message type: batchEvent');
           callbacks.onBatchEvent(message.batchEvent);
         } else if (message.groupDissolve && callbacks.onGroupDissolve) {
+          console.log('Received message type: groupDissolve');
           callbacks.onGroupDissolve(message.groupDissolve);
         }
       },
