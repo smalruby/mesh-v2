@@ -15,9 +15,7 @@ const state = {
   sessionStartTime: null,
   sessionTimerId: null,
   heartbeatTimerId: null,
-  dataSubscriptionId: null,
-  batchEventSubscriptionId: null,
-  dissolveSubscriptionId: null,
+  messageSubscriptionId: null,
   sensorData: {
     temperature: 20,
     brightness: 50,
@@ -275,11 +273,15 @@ async function handleCreateGroup() {
       initialData
     );
 
-    // Subscribe to data updates from other nodes
-    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+    // Subscribe to all group messages via unified subscription
+    state.messageSubscriptionId = state.client.subscribeToMessageInGroup(
       state.currentGroup.id,
       state.currentGroup.domain,
-      displayOtherNodesData
+      {
+        onDataUpdate: displayOtherNodesData,
+        onBatchEvent: handleBatchEventReceived,
+        onGroupDissolve: handleGroupDissolved
+      }
     );
 
     // Start heartbeat for host
@@ -414,25 +416,15 @@ async function handleJoinGroup() {
       initialData
     );
 
-    // Subscribe to data updates from other nodes
-    state.dataSubscriptionId = state.client.subscribeToDataUpdates(
+    // Subscribe to all group messages via unified subscription
+    state.messageSubscriptionId = state.client.subscribeToMessageInGroup(
       state.currentGroup.id,
       state.currentGroup.domain,
-      displayOtherNodesData
-    );
-
-    // Subscribe to batch events in group
-    state.batchEventSubscriptionId = state.client.subscribeToBatchEvents(
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      handleBatchEventReceived
-    );
-
-    // Subscribe to group dissolution
-    state.dissolveSubscriptionId = state.client.subscribeToGroupDissolve(
-      state.currentGroup.id,
-      state.currentGroup.domain,
-      handleGroupDissolved
+      {
+        onDataUpdate: displayOtherNodesData,
+        onBatchEvent: handleBatchEventReceived,
+        onGroupDissolve: handleGroupDissolved
+      }
     );
 
     // Stop heartbeat if it was running (e.g. from a previously created group)
@@ -464,22 +456,10 @@ async function handleLeaveGroup() {
 
     console.log('Left group:', result);
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
-    }
-
-    // Unsubscribe from dissolve notifications
-    if (state.dissolveSubscriptionId) {
-      state.client.unsubscribe(state.dissolveSubscriptionId);
-      state.dissolveSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     stopHeartbeat();
@@ -530,16 +510,10 @@ async function handleDissolveGroup() {
 
     console.log('Group dissolved');
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     stopHeartbeat();
@@ -596,16 +570,10 @@ async function handleDisconnect() {
       console.log('Left group by disconnect');
     }
 
-    // Unsubscribe from data updates
-    if (state.dataSubscriptionId) {
-      state.client.unsubscribe(state.dataSubscriptionId);
-      state.dataSubscriptionId = null;
-    }
-
-    // Unsubscribe from batch events
-    if (state.batchEventSubscriptionId) {
-      state.client.unsubscribe(state.batchEventSubscriptionId);
-      state.batchEventSubscriptionId = null;
+    // Unsubscribe from all group messages
+    if (state.messageSubscriptionId) {
+      state.client.unsubscribe(state.messageSubscriptionId);
+      state.messageSubscriptionId = null;
     }
 
     // Stop session timer
@@ -815,23 +783,13 @@ function handleBatchEventReceived(batchEvent) {
 function handleGroupDissolved(dissolveData) {
   console.log('Group has been dissolved:', dissolveData);
 
-  // Unsubscribe from all active subscriptions
-  if (state.dataSubscriptionId) {
-    state.client.unsubscribe(state.dataSubscriptionId);
-    state.dataSubscriptionId = null;
+  // Unsubscribe from all group messages
+  if (state.messageSubscriptionId) {
+    state.client.unsubscribe(state.messageSubscriptionId);
+    state.messageSubscriptionId = null;
   }
 
-  if (state.batchEventSubscriptionId) {
-    state.client.unsubscribe(state.batchEventSubscriptionId);
-    state.batchEventSubscriptionId = null;
-  }
-
-      if (state.dissolveSubscriptionId) {
-        state.client.unsubscribe(state.dissolveSubscriptionId);
-        state.dissolveSubscriptionId = null;
-      }
-  
-      stopHeartbeat();
+  stopHeartbeat();
   
       // Clear group state
       state.currentGroup = null;
