@@ -115,14 +115,14 @@ sequenceDiagram
         DynamoDB-->>Lambda: Success
         Lambda-->>AppSync: 新規グループ
     end
-    AppSync-->>Host: Group
+    AppSync-->>Host: Group (expiresAt, intervalSeconds)
 
     Member->>AppSync: joinGroup(groupId, nodeId, domain)
     AppSync->>DynamoDB: Pipeline: checkGroupExists
     alt グループ存在
         DynamoDB->>DynamoDB: PutItem: ノード登録
         DynamoDB-->>AppSync: Node
-        AppSync-->>Member: Node
+        AppSync-->>Member: Node (expiresAt, intervalSeconds)
     else グループなし
         DynamoDB-->>AppSync: GroupNotFound error
         AppSync-->>Member: Error
@@ -207,7 +207,7 @@ sequenceDiagram
             Resolver->>DynamoDB: UpdateItem: expiresAt更新<br/>(TTL延長)
             DynamoDB-->>Resolver: Success
             Resolver-->>AppSync: HeartbeatPayload
-            AppSync-->>Host: expiresAt, intervalSeconds
+            AppSync-->>Host: expiresAt, heartbeatIntervalSeconds
         else 非ホストまたはグループなし
             Resolver-->>AppSync: Unauthorized / GroupNotFound
             AppSync-->>Host: Error
@@ -220,7 +220,7 @@ sequenceDiagram
         Resolver->>DynamoDB: UpdateItem: ノードTTL更新
         DynamoDB-->>Resolver: Success
         Resolver-->>AppSync: MemberHeartbeatPayload
-        AppSync-->>Member: expiresAt, intervalSeconds
+        AppSync-->>Member: expiresAt, heartbeatIntervalSeconds
     end
 
     Note over DynamoDB: TTL期限切れ（60-600秒後）
@@ -324,7 +324,6 @@ Mesh v2 は Single Table Design を採用し、1つのテーブルにすべて�
   "name": "Node 1",
   "groupId": "abc123",
   "domain": "192.168.1.1",
-  "heartbeatIntervalSeconds": 120,
   "ttl": 1704067200
 }
 ```
