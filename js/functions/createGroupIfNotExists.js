@@ -46,7 +46,8 @@ export function request(ctx) {
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
   const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + actualMaxSeconds * 1000);
-  const ttl = nowEpoch + 60; // 1分間
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const ttl = nowEpoch + ttlSeconds;
 
   return {
     operation: 'PutItem',
@@ -78,7 +79,7 @@ export function response(ctx) {
   }
 
   // ハートビート間隔を環境変数から取得（ホスト用）
-  const heartbeatIntervalSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60');
+  const heartbeatIntervalSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30');
 
   // ctx.stashに既存グループがある場合はそれを返す
   if (ctx.stash.existingGroup) {

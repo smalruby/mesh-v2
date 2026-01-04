@@ -6,7 +6,8 @@ import { util } from '@aws-appsync/utils';
 export function request(ctx) {
   const { domain } = ctx.args;
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const threshold = nowEpoch - 60; // 1分前
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const threshold = nowEpoch - ttlSeconds;
 
   return {
     operation: 'Query',

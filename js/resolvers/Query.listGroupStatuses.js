@@ -10,6 +10,7 @@ export function request(ctx) {
   if (!domain || !groupId) {
     util.error('groupId and domain are required', 'ValidationError');
   }
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
 
   // DynamoDB Query: DOMAIN#${domain} 配下の GROUP#${groupId}#NODE#*#STATUS を取得
   return {
@@ -19,6 +20,15 @@ export function request(ctx) {
       expressionValues: util.dynamodb.toMapValues({
         ':pk': `DOMAIN#${domain}`,
         ':sk_prefix': `GROUP#${groupId}#NODE#`
+      })
+    },
+    filter: {
+      expression: 'attribute_not_exists(#ttl) OR #ttl > :now',
+      expressionNames: {
+        '#ttl': 'ttl'
+      },
+      expressionValues: util.dynamodb.toMapValues({
+        ':now': nowEpoch
       })
     }
   };

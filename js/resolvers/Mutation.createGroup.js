@@ -34,7 +34,8 @@ export function request(ctx) {
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
   const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + actualMaxSeconds * 1000);
-  const ttl = nowEpoch + 60; // 1分間
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const ttl = nowEpoch + ttlSeconds;
 
   return {
     operation: 'PutItem',

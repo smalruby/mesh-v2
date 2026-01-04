@@ -20,11 +20,14 @@ export function response(ctx) {
     util.error(ctx.error.message, ctx.error.type);
   }
 
-  if (!ctx.result) {
+  const result = ctx.result;
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+
+  if (!result || (result.ttl && result.ttl <= nowEpoch)) {
     return null;
   }
 
   // stashに保存して次のFunctionへ
-  ctx.stash.nodeMetadata = ctx.result;
-  return ctx.result;
+  ctx.stash.nodeMetadata = result;
+  return result;
 }

@@ -5,6 +5,7 @@ import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
   const { groupId, domain } = ctx.args;
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
 
   return {
     operation: 'Query',
@@ -13,6 +14,15 @@ export function request(ctx) {
       expressionValues: util.dynamodb.toMapValues({
         ':pk': `DOMAIN#${domain}`,
         ':sk_prefix': `GROUP#${groupId}#NODE#`
+      })
+    },
+    filter: {
+      expression: 'attribute_not_exists(#ttl) OR #ttl > :now',
+      expressionNames: {
+        '#ttl': 'ttl'
+      },
+      expressionValues: util.dynamodb.toMapValues({
+        ':now': nowEpoch
       })
     }
   };
