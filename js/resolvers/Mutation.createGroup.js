@@ -12,7 +12,7 @@ export function request(ctx) {
   }
 
   // maxConnectionTimeSeconds のバリデーションと決定
-  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '3000');
+  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '1500');
   let actualMaxSeconds = envMaxSeconds;
 
   if (maxConnectionTimeSeconds !== undefined && maxConnectionTimeSeconds !== null) {

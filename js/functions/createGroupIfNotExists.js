@@ -24,7 +24,7 @@ export function request(ctx) {
   }
 
   // maxConnectionTimeSeconds のバリデーションと決定
-  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '3000');
+  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '1500');
   let actualMaxSeconds = envMaxSeconds;
 
   if (maxConnectionTimeSeconds !== undefined && maxConnectionTimeSeconds !== null) {
@@ -79,7 +79,7 @@ export function response(ctx) {
   }
 
   // ハートビート間隔を環境変数から取得（ホスト用）
-  const heartbeatIntervalSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30');
+  const heartbeatIntervalSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60');
 
   // ctx.stashに既存グループがある場合はそれを返す
   if (ctx.stash.existingGroup) {
