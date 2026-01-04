@@ -12,7 +12,7 @@ export function request(ctx) {
   }
 
   // maxConnectionTimeSeconds のバリデーションと決定
-  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '3000');
+  const envMaxSeconds = +(ctx.env.MESH_MAX_CONNECTION_TIME_SECONDS || '1500');
   let actualMaxSeconds = envMaxSeconds;
 
   if (maxConnectionTimeSeconds !== undefined && maxConnectionTimeSeconds !== null) {
@@ -34,7 +34,8 @@ export function request(ctx) {
   const now = util.time.nowISO8601();
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
   const expiresAt = util.time.epochMilliSecondsToISO8601(util.time.nowEpochMilliSeconds() + actualMaxSeconds * 1000);
-  const ttl = nowEpoch + 60; // 1分間
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const ttl = nowEpoch + ttlSeconds;
 
   return {
     operation: 'PutItem',

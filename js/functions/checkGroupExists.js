@@ -19,7 +19,8 @@ export function request(ctx) {
 export function response(ctx) {
   const { groupId, domain } = ctx.args;
   const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
-  const heartbeatThreshold = nowEpoch - 60; // heartbeat閾値: 60秒
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const heartbeatThreshold = nowEpoch - ttlSeconds;
 
   // グループが存在しない
   if (!ctx.result) {

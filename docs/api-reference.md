@@ -351,7 +351,7 @@ mutation RenewHeartbeat($groupId: ID!, $domain: String!, $hostId: ID!) {
 
 **重要**: この mutation はホストのみが実行できます。非ホストが実行すると `Unauthorized` エラーが返されます。
 
-**ハートビート間隔**: 環境変数 `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` で設定（開発環境: 15秒、本番環境: 30秒）
+**ハートビート間隔**: 環境変数 `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` で設定（開発環境: 15秒、本番環境: 60秒）
 
 ---
 

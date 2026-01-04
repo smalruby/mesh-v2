@@ -13,6 +13,10 @@ export function request(ctx) {
     value: item.value
   }));
 
+  const ttlSeconds = +(ctx.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600');
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const ttl = nowEpoch + ttlSeconds;
+
   return {
     operation: 'PutItem',
     key: util.dynamodb.toMapValues({
@@ -25,6 +29,7 @@ export function request(ctx) {
       domain: domain,
       data: sensorDataList,
       timestamp: now,
+      ttl: ttl,
       // GSI用属性
       gsi_pk: `NODE#${nodeId}`,
       gsi_sk: 'STATUS'

@@ -5,6 +5,10 @@ import { util } from '@aws-appsync/utils';
 
 export function request(ctx) {
   const { hostId, domain } = ctx.args;
+  const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+  const ttlSeconds = +(ctx.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150');
+  const threshold = nowEpoch - ttlSeconds;
+  const nowISO = util.time.nowISO8601();
 
   // 既存グループの検索
   return {
@@ -17,9 +21,11 @@ export function request(ctx) {
       })
     },
     filter: {
-      expression: 'hostId = :hostId',
+      expression: 'hostId = :hostId AND heartbeatAt > :threshold AND expiresAt > :now',
       expressionValues: util.dynamodb.toMapValues({
-        ':hostId': hostId
+        ':hostId': hostId,
+        ':threshold': threshold,
+        ':now': nowISO
       })
     }
   };

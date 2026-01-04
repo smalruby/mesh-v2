@@ -74,11 +74,11 @@ cp .env.example .env
 | 変数名 | 開発環境推奨値 | 本番環境推奨値 | 説明 |
 |--------|--------------|--------------|------|
 | `MESH_SECRET_KEY` | `dev-secret-key-for-testing` | （GitHub Secretsで設定） | ドメイン検証用の秘密鍵 |
-| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `30` | ホストのハートビート送信間隔（秒） |
+| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `60` | ホストのハートビート送信間隔（秒） |
 | `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | ホストグループの有効期限（秒） |
 | `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | メンバーのハートビート送信間隔（秒） |
 | `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | メンバーノードの有効期限（秒） |
-| `MESH_MAX_CONNECTION_TIME_SECONDS` | `300` | `3000` | グループの最大接続時間（秒） |
+| `MESH_MAX_CONNECTION_TIME_SECONDS` | `300` | `1500` | グループの最大接続時間（秒） |
 
 ### 3.3 開発環境用の設定（stg）
 
@@ -101,11 +101,11 @@ MESH_MAX_CONNECTION_TIME_SECONDS=300
 ```bash
 # 本番環境ではGitHub Secretsまたは環境変数で設定
 MESH_SECRET_KEY=<本番用の秘密鍵>
-MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=60
 MESH_HOST_HEARTBEAT_TTL_SECONDS=150
 MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120
 MESH_MEMBER_HEARTBEAT_TTL_SECONDS=600
-MESH_MAX_CONNECTION_TIME_SECONDS=3000
+MESH_MAX_CONNECTION_TIME_SECONDS=1500
 ```
 
 **重要**:
@@ -175,10 +175,11 @@ npx cdk deploy
 ```bash
 # 環境変数を直接指定してデプロイ
 MESH_SECRET_KEY="<本番用秘密鍵>" \
-MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30 \
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=60 \
 MESH_HOST_HEARTBEAT_TTL_SECONDS=150 \
 MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120 \
 MESH_MEMBER_HEARTBEAT_TTL_SECONDS=600 \
+MESH_MAX_CONNECTION_TIME_SECONDS=1500 \
 npx cdk deploy --context stage=prod
 ```
 

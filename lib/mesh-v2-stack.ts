@@ -71,7 +71,7 @@ export class MeshV2Stack extends cdk.Stack {
     });
 
     // Environment variables defaults based on stage
-    const defaultMaxConnTimeSeconds = stage === 'prod' ? '3000' : '600';
+    const defaultMaxConnTimeSeconds = stage === 'prod' ? '1500' : '300';
 
     // AppSync GraphQL API for Mesh v2
     this.api = new appsync.GraphqlApi(this, 'MeshV2Api', {
@@ -87,7 +87,7 @@ export class MeshV2Stack extends cdk.Stack {
       },
       environmentVariables: {
         TABLE_NAME: this.table.tableName,
-        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30',
+        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60',
         MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
         MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
         MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
@@ -367,7 +367,7 @@ export class MeshV2Stack extends cdk.Stack {
         LC_ALL: 'en_US.UTF-8',
         DYNAMODB_TABLE_NAME: this.table.tableName,
         MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
-        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30',
+        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60',
         MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
         MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
         MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',

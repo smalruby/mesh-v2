@@ -48,6 +48,6 @@ export function response(ctx) {
     groupId: groupId,
     domain: domain,
     expiresAt: group.expiresAt,
-    heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '30')
+    heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60')
   };
 }

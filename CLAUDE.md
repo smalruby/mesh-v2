@@ -88,11 +88,11 @@ Mesh v2 uses environment variables for configuration, allowing different setting
 | Variable | Development | Production | Description |
 |----------|-------------|------------|-------------|
 | `MESH_SECRET_KEY` | `dev-secret-key-for-testing` | (set in GitHub Secrets) | Secret key for domain validation |
-| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `30` | Host heartbeat interval in seconds |
-| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | Host group TTL in seconds (5× interval) |
+| `MESH_HOST_HEARTBEAT_INTERVAL_SECONDS` | `15` | `60` | Host heartbeat interval in seconds |
+| `MESH_HOST_HEARTBEAT_TTL_SECONDS` | `60` | `150` | Host group TTL in seconds |
 | `MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS` | `15` | `120` | Member heartbeat interval in seconds |
-| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | Member node TTL in seconds (5× interval) |
-| `MESH_MAX_CONNECTION_TIME_MINUTES` | `10` | `50` | Maximum connection time for a group (minutes) |
+| `MESH_MEMBER_HEARTBEAT_TTL_SECONDS` | `60` | `600` | Member node TTL in seconds |
+| `MESH_MAX_CONNECTION_TIME_MINUTES` | `5` | `25` | Maximum connection time for a group (minutes) |
 
 ### Setup for Local Development
 
@@ -118,7 +118,7 @@ npx cdk deploy --context stage=stg
 
 **Command Line Override**:
 ```bash
-MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=30 \
+MESH_HOST_HEARTBEAT_INTERVAL_SECONDS=60 \
 MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS=120 \
 npx cdk deploy --context stage=prod
 ```
