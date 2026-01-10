@@ -132,9 +132,16 @@ class AppSyncSubscriptionHelper
   private
 
   def convert_to_websocket_endpoint(https_endpoint)
-    https_endpoint
-      .sub("https://", "wss://")
-      .sub(".appsync-api.", ".appsync-realtime-api.")
+    if https_endpoint.include?(".appsync-api.")
+      https_endpoint
+        .sub("https://", "wss://")
+        .sub(".appsync-api.", ".appsync-realtime-api.")
+    else
+      # For custom domains, AppSync WebSocket endpoint requires /realtime path
+      https_endpoint
+        .sub("https://", "wss://")
+        .sub(/\/graphql\/?$/, "/graphql/realtime")
+    end
   end
 
   def extract_host(endpoint)

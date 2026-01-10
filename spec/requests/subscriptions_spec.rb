@@ -138,7 +138,7 @@ RSpec.describe "Subscriptions API", type: :request do
       puts "2. Connect to AppSync WebSocket endpoint:"
       puts "   API_URL='#{ENV["APPSYNC_ENDPOINT"]}'"
       puts "   API_KEY='#{ENV["APPSYNC_API_KEY"]}'"
-      puts "   WS_URL=$(echo $API_URL | sed 's/https:/wss:/g' | sed 's/graphql$/graphql\\/connect/g')"
+      puts "   WS_URL=$(echo $API_URL | sed 's/https:/wss:/g' | sed 's/graphql$/graphql\\/realtime/g')"
       puts ""
       puts "3. Subscribe to onMessageInGroup:"
       puts "   subscription {"
