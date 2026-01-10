@@ -35,10 +35,9 @@ export class MeshV2Stack extends cdk.Stack {
         domainName: parentZoneName,
       });
 
-      const certificate = new acm.DnsValidatedCertificate(this, 'ApiCertificate', {
+      const certificate = new acm.Certificate(this, 'ApiCertificate', {
         domainName: customDomain,
-        hostedZone: zone,
-        region: 'us-east-1',
+        validation: acm.CertificateValidation.fromDns(zone),
       });
 
       domainOptions = {
