@@ -2,6 +2,8 @@ import * as cdk from 'aws-cdk-lib/core';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -15,6 +17,22 @@ export class MeshV2Stack extends cdk.Stack {
     // Stage取得（優先順位: --context stage=..., .envのSTAGE, デフォルト: stg）
     const stage = this.node.tryGetContext('stage') || process.env.STAGE || 'stg';
     const stageSuffix = stage === 'prod' ? '' : `-${stage}`;
+
+    // Custom Domain configuration
+    const graphqlDomainName = stage === 'prod' ? 'graphql.smalruby.app' : `${stage}-graphql.smalruby.app`;
+    const zone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+      domainName: 'smalruby.app',
+    });
+
+    const certificate = new acm.Certificate(this, 'ApiCertificate', {
+      domainName: graphqlDomainName,
+      validation: acm.CertificateValidation.fromDns(zone),
+    });
+
+    const appsyncDomainName = new appsync.CfnDomainName(this, 'AppSyncCustomDomain', {
+      domainName: graphqlDomainName,
+      certificateArn: certificate.certificateArn,
+    });
 
     // Stack全体にタグ付与
     cdk.Tags.of(this).add('Project', 'MeshV2');
@@ -98,6 +116,19 @@ export class MeshV2Stack extends cdk.Stack {
         fieldLogLevel: appsync.FieldLogLevel.ALL,
         excludeVerboseContent: false,
       },
+    });
+
+    // Associate Custom Domain with API
+    new appsync.CfnDomainNameApiAssociation(this, 'ApiAssociation', {
+      apiId: this.api.apiId,
+      domainName: appsyncDomainName.attrDomainName,
+    });
+
+    // Route53 CNAME record for Custom Domain
+    new route53.CnameRecord(this, 'ApiCnameRecord', {
+      zone,
+      recordName: graphqlDomainName,
+      domainName: appsyncDomainName.attrAppSyncDomainName,
     });
 
     // AppSync APIにタグ付与
@@ -419,6 +450,12 @@ export class MeshV2Stack extends cdk.Stack {
     new cdk.CfnOutput(this, 'GraphQLApiId', {
       value: this.api.apiId,
       description: 'AppSync GraphQL API ID',
+    });
+
+    // Output Custom Domain URL
+    new cdk.CfnOutput(this, 'CustomDomainUrl', {
+      value: `https://${graphqlDomainName}/graphql`,
+      description: 'AppSync Custom Domain URL',
     });
   }
 }
