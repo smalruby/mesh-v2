@@ -22,7 +22,9 @@ export class MeshV2Stack extends cdk.Stack {
     // Custom Domain configuration from environment variables
     const parentZoneName = process.env.ROUTE53_PARENT_ZONE_NAME || 'api.smalruby.app';
     const defaultCustomDomain = stage === 'prod' ? `graphql.${parentZoneName}` : `${stage}.graphql.${parentZoneName}`;
-    const customDomain = process.env.APPSYNC_CUSTOM_DOMAIN || (process.env.STAGE || this.node.tryGetContext('stage') ? defaultCustomDomain : undefined);
+    const customDomain = process.env.APPSYNC_CUSTOM_DOMAIN === 'false'
+      ? undefined
+      : (process.env.APPSYNC_CUSTOM_DOMAIN || defaultCustomDomain);
 
     let domainOptions: appsync.DomainOptions | undefined;
     let zone: route53.IHostedZone | undefined;
@@ -130,9 +132,12 @@ export class MeshV2Stack extends cdk.Stack {
 
     // Route53 Alias record for Custom Domain
     if (customDomain && zone) {
+      // Extract subdomain from customDomain (e.g., "graphql.api.smalruby.app" -> "graphql")
+      const subdomain = customDomain.replace(`.${parentZoneName}`, '');
+
       new route53.ARecord(this, 'ApiAliasRecord', {
         zone,
-        recordName: customDomain,
+        recordName: subdomain,
         target: route53.RecordTarget.fromAlias(new targets.AppSyncTarget(this.api)),
       });
     }
