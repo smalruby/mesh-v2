@@ -2,6 +2,9 @@ import * as cdk from 'aws-cdk-lib/core';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as path from 'path';
 import { Construct } from 'constructs';
 
@@ -15,6 +18,33 @@ export class MeshV2Stack extends cdk.Stack {
     // Stage取得（優先順位: --context stage=..., .envのSTAGE, デフォルト: stg）
     const stage = this.node.tryGetContext('stage') || process.env.STAGE || 'stg';
     const stageSuffix = stage === 'prod' ? '' : `-${stage}`;
+
+    // Custom Domain configuration from environment variables
+    const parentZoneName = process.env.ROUTE53_PARENT_ZONE_NAME || 'api.smalruby.app';
+    const defaultCustomDomain = stage === 'prod' ? `graphql.${parentZoneName}` : `${stage}.graphql.${parentZoneName}`;
+    const customDomain = process.env.APPSYNC_CUSTOM_DOMAIN === 'false'
+      ? undefined
+      : (process.env.APPSYNC_CUSTOM_DOMAIN || defaultCustomDomain);
+
+    let domainOptions: appsync.DomainOptions | undefined;
+    let zone: route53.IHostedZone | undefined;
+
+    if (customDomain) {
+      zone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+        domainName: parentZoneName,
+      });
+
+      const certificate = new acm.DnsValidatedCertificate(this, 'ApiCertificate', {
+        domainName: customDomain,
+        hostedZone: zone,
+        region: 'us-east-1',
+      });
+
+      domainOptions = {
+        certificate,
+        domainName: customDomain,
+      };
+    }
 
     // Stack全体にタグ付与
     cdk.Tags.of(this).add('Project', 'MeshV2');
@@ -77,6 +107,7 @@ export class MeshV2Stack extends cdk.Stack {
     this.api = new appsync.GraphqlApi(this, 'MeshV2Api', {
       name: `MeshV2Api${stageSuffix}`,
       definition: appsync.Definition.fromFile(path.join(__dirname, '../graphql/schema.graphql')),
+      domainName: domainOptions,
       authorizationConfig: {
         defaultAuthorization: {
           authorizationType: appsync.AuthorizationType.API_KEY,
@@ -99,6 +130,18 @@ export class MeshV2Stack extends cdk.Stack {
         excludeVerboseContent: false,
       },
     });
+
+    // Route53 Alias record for Custom Domain
+    if (customDomain && zone) {
+      // Extract subdomain from customDomain (e.g., "graphql.api.smalruby.app" -> "graphql")
+      const subdomain = customDomain.replace(`.${parentZoneName}`, '');
+
+      new route53.ARecord(this, 'ApiAliasRecord', {
+        zone,
+        recordName: subdomain,
+        target: route53.RecordTarget.fromAlias(new targets.AppSyncTarget(this.api)),
+      });
+    }
 
     // AppSync APIにタグ付与
     cdk.Tags.of(this.api).add('ResourceType', 'GraphQLAPI');
@@ -420,5 +463,13 @@ export class MeshV2Stack extends cdk.Stack {
       value: this.api.apiId,
       description: 'AppSync GraphQL API ID',
     });
+
+    // Output Custom Domain URL
+    if (customDomain) {
+      new cdk.CfnOutput(this, 'CustomDomainUrl', {
+        value: `https://${customDomain}/graphql`,
+        description: 'AppSync Custom Domain URL',
+      });
+    }
   }
 }

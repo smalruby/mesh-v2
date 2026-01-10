@@ -49,6 +49,8 @@ jobs:
 
       - name: Synthesize CDK stack
         run: npx cdk synth --context stage=stg
+        env:
+          APPSYNC_CUSTOM_DOMAIN: 'false'
 
   security:
     name: Security Audits
