@@ -24,6 +24,11 @@ export function request(ctx) {
           pk: `DOMAIN#${domain}`,
           sk: `GROUP#${groupId}#NODE#${nodeId}`
         }),
+        attributeValues: util.dynamodb.toMapValues({
+          id: nodeId,
+          nodeId: nodeId,
+          groupId: groupId,
+          domain: domain,
           name: `Node ${nodeId}`,
           joinedAt: now,
           ttl: ttl

@@ -329,7 +329,7 @@ export class MeshV2Stack extends cdk.Stack {
 
     // Function 2: Create group if not exists, or return existing group
     const createGroupIfNotExistsFunction = new appsync.AppsyncFunction(this, 'CreateGroupIfNotExistsFunction', {
-      name: 'checkExistingGroup',
+      name: 'createGroupIfNotExists',
       api: this.api,
       dataSource: dynamoDbDataSource,
       runtime: appsync.FunctionRuntime.JS_1_0_0,
