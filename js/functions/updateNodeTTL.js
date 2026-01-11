@@ -38,32 +38,30 @@ export function response(ctx) {
     util.error(ctx.error.message, ctx.error.type);
   }
 
-    const { groupId, domain, nodeId } = ctx.args;
+      const { groupId, domain, nodeId } = ctx.args;
 
-    const ttlSeconds = +(ctx.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600');
+      const ttlSeconds = +(ctx.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600');
 
-    const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
+      const nowEpoch = Math.floor(util.time.nowEpochMilliSeconds() / 1000);
 
-    const group = ctx.stash.group;
+    
 
-  
+      return {
 
-    return {
+        nodeId: nodeId,
 
-      nodeId: nodeId,
+        groupId: groupId,
 
-      groupId: groupId,
+        domain: domain,
 
-      domain: domain,
+        expiresAt: util.time.epochMilliSecondsToISO8601((nowEpoch + ttlSeconds) * 1000),
 
-      createdAt: group ? group.createdAt : null,
+        heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120')
 
-      expiresAt: util.time.epochMilliSecondsToISO8601((nowEpoch + ttlSeconds) * 1000),
+      };
 
-      heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120')
+    }
 
-    };
-
-  }
+    
 
   

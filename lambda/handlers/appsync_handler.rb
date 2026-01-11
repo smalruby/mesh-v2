@@ -142,7 +142,6 @@ def format_group_response(group)
     name: group.name,
     hostId: group.host_id,
     createdAt: group.created_at,
-    expiresAt: group.expires_at,
     useWebSocket: group.use_websocket,
     pollingIntervalSeconds: group.polling_interval_seconds
   }

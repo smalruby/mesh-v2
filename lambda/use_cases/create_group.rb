@@ -15,9 +15,6 @@ class CreateGroupUseCase
     return existing_group if existing_group
 
     polling_interval = use_websocket ? nil : (ENV["MESH_POLLING_INTERVAL_SECONDS"] || 2).to_i
-    max_conn_seconds = (ENV["MESH_MAX_CONNECTION_TIME_SECONDS"] || 1500).to_i
-    now = Time.now.utc
-    expires_at = (now + max_conn_seconds).iso8601
 
     # 新規グループ作成
     group = Group.new(
@@ -25,8 +22,7 @@ class CreateGroupUseCase
       name: name,
       host_id: host_id,
       domain: domain,
-      created_at: now.iso8601,
-      expires_at: expires_at,
+      created_at: Time.now.utc.iso8601,
       use_websocket: use_websocket,
       polling_interval_seconds: polling_interval
     )

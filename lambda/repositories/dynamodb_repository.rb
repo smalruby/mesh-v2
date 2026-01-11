@@ -54,7 +54,6 @@ class DynamoDBRepository
         "name" => group.name,
         "hostId" => group.host_id,
         "createdAt" => group.created_at,
-        "expiresAt" => group.expires_at,
         "useWebSocket" => group.use_websocket,
         "pollingIntervalSeconds" => group.polling_interval_seconds,
         "gsi_pk" => "GROUP##{group.id}",
@@ -242,7 +241,6 @@ class DynamoDBRepository
       host_id: item["hostId"],
       domain: item["domain"],
       created_at: item["createdAt"],
-      expires_at: item["expiresAt"],
       use_websocket: item.key?("useWebSocket") ? item["useWebSocket"] : true,
       polling_interval_seconds: item["pollingIntervalSeconds"]
     )

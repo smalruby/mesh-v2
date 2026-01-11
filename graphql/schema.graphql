@@ -18,7 +18,6 @@ type Group {
   fullId: String!   # {group_id}@{domain}の完全なID
   name: String!
   hostId: ID!
-  createdAt: AWSDateTime!
   expiresAt: AWSDateTime!
   heartbeatIntervalSeconds: Int
   useWebSocket: Boolean!       # NEW: WebSocket 使用フラグ
@@ -30,7 +29,6 @@ type Node {
   name: String!
   groupId: ID
   domain: String    # 所属しているdomain
-  createdAt: AWSDateTime
   expiresAt: AWSDateTime
   heartbeatIntervalSeconds: Int
   useWebSocket: Boolean        # NEW: グループの設定を継承
@@ -91,7 +89,6 @@ type GroupDissolvePayload {
 type HeartbeatPayload {
   groupId: ID!
   domain: String!
-  createdAt: AWSDateTime!
   expiresAt: AWSDateTime!
   heartbeatIntervalSeconds: Int
 }
@@ -100,7 +97,6 @@ type MemberHeartbeatPayload {
   nodeId: ID!
   groupId: ID!
   domain: String!
-  createdAt: AWSDateTime!
   expiresAt: AWSDateTime!
   heartbeatIntervalSeconds: Int
 }

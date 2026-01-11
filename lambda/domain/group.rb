@@ -1,15 +1,14 @@
 # Group Domain Model
 # ドメインモデル - ビジネスルールとバリデーションを持つ
 class Group
-  attr_reader :id, :name, :host_id, :domain, :created_at, :expires_at, :use_websocket, :polling_interval_seconds
+  attr_reader :id, :name, :host_id, :domain, :created_at, :use_websocket, :polling_interval_seconds
 
-  def initialize(id:, name:, host_id:, domain:, created_at:, expires_at: nil, use_websocket: true, polling_interval_seconds: nil)
+  def initialize(id:, name:, host_id:, domain:, created_at:, use_websocket: true, polling_interval_seconds: nil)
     @id = id
     @name = name
     @host_id = host_id
     @domain = domain
     @created_at = created_at
-    @expires_at = expires_at
     @use_websocket = use_websocket
     @polling_interval_seconds = polling_interval_seconds
 

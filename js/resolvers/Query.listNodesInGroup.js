@@ -40,7 +40,6 @@ export function response(ctx) {
       id: item.nodeId,
       name: item.name || `Node ${item.nodeId}`,
       groupId: item.groupId,
-      domain: item.domain,
-      createdAt: item.createdAt || item.joinedAt
+      domain: item.domain
     }));
 }

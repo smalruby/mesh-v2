@@ -52,7 +52,7 @@ export function response(ctx) {
       fullId: existingGroups[0].fullId,
       name: existingGroups[0].name,
       hostId: existingGroups[0].hostId,
-      createdAt: existingGroups[0].createdAt,
+      expiresAt: existingGroups[0].expiresAt,
       useWebSocket: existingGroups[0].useWebSocket !== false, // デフォルト true
       pollingIntervalSeconds: existingGroups[0].pollingIntervalSeconds
     };
