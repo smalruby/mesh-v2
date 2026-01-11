@@ -72,6 +72,8 @@ export function response(ctx) {
     groupId: groupId,
     domain: domain,
     expiresAt: group ? group.expiresAt : null,
-    heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120')
+    heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120'),
+    useWebSocket: group ? group.useWebSocket !== false : true,
+    pollingIntervalSeconds: group ? group.pollingIntervalSeconds : null
   };
 }

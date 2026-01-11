@@ -18,9 +18,10 @@ type Group {
   fullId: String!   # {group_id}@{domain}の完全なID
   name: String!
   hostId: ID!
-  createdAt: AWSDateTime!
   expiresAt: AWSDateTime!
   heartbeatIntervalSeconds: Int
+  useWebSocket: Boolean!       # NEW: WebSocket 使用フラグ
+  pollingIntervalSeconds: Int  # NEW: ポーリング間隔（useWebSocket=false の場合のみ）
 }
 
 type Node {
@@ -30,6 +31,8 @@ type Node {
   domain: String    # 所属しているdomain
   expiresAt: AWSDateTime
   heartbeatIntervalSeconds: Int
+  useWebSocket: Boolean        # NEW: グループの設定を継承
+  pollingIntervalSeconds: Int  # NEW: ポーリング間隔（useWebSocket=false の場合のみ）
 }
 
 # メッセージの包括的な型
@@ -58,6 +61,7 @@ type Event {
   domain: String!
   payload: String
   timestamp: AWSDateTime!
+  cursor: String           # NEW: ポーリング用のカーソル（SK）
 }
 
 # イベントのバッチ送信用の入力型
@@ -104,6 +108,14 @@ type LeaveGroupPayload {
   message: String!
 }
 
+# NEW: recordEventsByNode のレスポンス型
+type RecordEventsPayload {
+  groupId: ID!
+  domain: String!
+  recordedCount: Int!       # 記録したイベント数
+  nextSince: String!        # NEW: 次回の getEventsSince の since に指定する値
+}
+
 # --- クエリ (Queries) ---
 
 type Query {
@@ -118,6 +130,14 @@ type Query {
 
   # グループ内の全Node取得
   listNodesInGroup(groupId: ID!, domain: String!): [Node!]!
+
+  # NEW: 前回取得日時以降のイベントを取得（ポーリング用）
+  # since: 前回の nextSince または Event.cursor を指定
+  getEventsSince(
+    groupId: ID!
+    domain: String!
+    since: String!
+  ): [Event!]!
 }
 
 # --- ミューテーション (Mutations) ---
@@ -133,6 +153,7 @@ type Mutation {
     hostId: ID!
     domain: String!
     maxConnectionTimeSeconds: Int  # オプション: 1以上、環境変数の値以下
+    useWebSocket: Boolean!         # NEW: WebSocket 使用フラグ
   ): Group!
 
   joinGroup(
@@ -182,6 +203,14 @@ type Mutation {
     nodeId: ID!
     events: [EventInput!]!
   ): MeshMessage
+
+  # NEW: ポーリング用のイベント記録 mutation
+  recordEventsByNode(
+    groupId: ID!
+    domain: String!
+    nodeId: ID!
+    events: [EventInput!]!
+  ): RecordEventsPayload!
 }
 
 # --- サブスクリプション (Subscriptions) ---

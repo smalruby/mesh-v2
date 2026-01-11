@@ -27,6 +27,8 @@ type Group {
   createdAt: AWSDateTime!
   expiresAt: AWSDateTime!  # グループの有効期限
   heartbeatIntervalSeconds: Int
+  useWebSocket: Boolean!       # NEW: WebSocket 使用フラグ
+  pollingIntervalSeconds: Int  # NEW: ポーリング間隔（useWebSocket=false の場合のみ）
 }
 ```
 
@@ -38,7 +40,10 @@ type Node {
   name: String!
   groupId: ID
   domain: String  # 所属しているdomain
+  expiresAt: AWSDateTime
   heartbeatIntervalSeconds: Int
+  useWebSocket: Boolean        # NEW: グループの設定を継承
+  pollingIntervalSeconds: Int  # NEW: ポーリング間隔（useWebSocket=false の場合のみ）
 }
 ```
 
@@ -57,8 +62,11 @@ type SensorData {
 type Event {
   name: String!
   firedByNodeId: ID!
-  payload: AWSJSON
+  groupId: ID!
+  domain: String!
+  payload: String
   timestamp: AWSDateTime!
+  cursor: String           # NEW: ポーリング用のカーソル（SK）
 }
 ```
 
@@ -177,6 +185,29 @@ query ListNodesInGroup($groupId: ID!, $domain: String!) {
 
 **用途**: グループメンバーの一覧取得。
 
+### getEventsSince
+
+前回取得日時以降のイベントを取得します（ポーリング用）。
+
+```graphql
+query GetEventsSince($groupId: ID!, $domain: String!, $since: String!) {
+  getEventsSince(groupId: $groupId, domain: $domain, since: $since) {
+    name
+    firedByNodeId
+    groupId
+    domain
+    payload
+    timestamp
+    cursor
+  }
+}
+```
+
+**パラメータ**:
+- `since: String!` - 前回の `nextSince` または最後に取得したイベントの `cursor` を指定します。
+
+**戻り値**: イベントの配列。最大 100 件まで取得されます。
+
 ## Mutations
 
 ### createDomain
@@ -292,6 +323,35 @@ mutation FireEventsByNode(
   }
 }
 ```
+
+### recordEventsByNode
+
+ノードが複数のイベントを一度に送信し、DynamoDB に保存します（ポーリング用）。
+
+```graphql
+mutation RecordEventsByNode(
+  $nodeId: ID!
+  $groupId: ID!
+  $domain: String!
+  $events: [EventInput!]!
+) {
+  recordEventsByNode(
+    nodeId: $nodeId
+    groupId: $groupId
+    domain: $domain
+    events: $events
+  ) {
+    groupId
+    domain
+    recordedCount
+    nextSince
+  }
+}
+```
+
+**用途**: WebSocket が使用できない環境でのイベント送信に使用。この mutation は `onMessageInGroup` subscription を**トリガーしません**。
+
+---
 
 ### leaveGroup
 

@@ -9,7 +9,9 @@ RSpec.describe Group do
         name: "Test Group",
         host_id: "host-001",
         domain: "example.com",
-        created_at: "2025-01-01T00:00:00Z"
+        created_at: "2025-01-01T00:00:00Z",
+        use_websocket: false,
+        polling_interval_seconds: 2
       )
 
       expect(group.id).to eq("group-001")
@@ -17,6 +19,8 @@ RSpec.describe Group do
       expect(group.host_id).to eq("host-001")
       expect(group.domain).to eq("example.com")
       expect(group.created_at).to eq("2025-01-01T00:00:00Z")
+      expect(group.use_websocket).to eq(false)
+      expect(group.polling_interval_seconds).to eq(2)
     end
 
     it "idがnilの場合はエラーを発生させる" do

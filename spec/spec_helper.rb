@@ -55,12 +55,13 @@ def execute_graphql(query, variables = {}, suppress_errors: false)
 end
 
 # テスト用グループ作成ヘルパー
-def create_test_group(name, host_id, domain, max_connection_time_seconds: nil)
+def create_test_group(name, host_id, domain, max_connection_time_seconds: nil, use_websocket: true)
   query = File.read(File.join(__dir__, "fixtures/mutations/create_group.graphql"))
   variables = {
     name: name,
     hostId: host_id,
-    domain: domain
+    domain: domain,
+    useWebSocket: use_websocket
   }
   variables[:maxConnectionTimeSeconds] = max_connection_time_seconds if max_connection_time_seconds
 

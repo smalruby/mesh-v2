@@ -170,6 +170,8 @@ sequenceDiagram
     participant DynamoDB
     participant Subscription
 
+    Note over Node1,Subscription: WebSocket プロトコル使用時
+
     Node2->>AppSync: subscribe: onMessageInGroup(groupId, domain)
     AppSync->>Subscription: WebSocket接続確立
 
@@ -177,8 +179,7 @@ sequenceDiagram
     AppSync->>Resolver: JS Resolver
     Resolver->>DynamoDB: Query: checkGroupExists
     alt グループ存在
-        Resolver->>DynamoDB: BatchWriteItem: イベント保存（最大25件）
-        DynamoDB-->>Resolver: Success
+        Resolver->>DynamoDB: (None DataSource): Skip persistence
         Resolver-->>AppSync: MeshMessage
         AppSync->>Subscription: Publish: onMessageInGroup (batchEvent)
         Subscription-->>Node2: MeshMessage（リアルタイム配信）
@@ -186,6 +187,36 @@ sequenceDiagram
     else グループなし
         Resolver-->>AppSync: GroupNotFound error
         AppSync-->>Node1: Error
+    end
+```
+
+### イベント通信フロー（ポーリング）
+
+```mermaid
+sequenceDiagram
+    participant Node1 as Node 1 (送信)
+    participant Node2 as Node 2 (受信)
+    participant AppSync
+    participant Resolver
+    participant DynamoDB
+
+    Note over Node1,DynamoDB: ポーリング プロトコル使用時
+
+    Node1->>AppSync: recordEventsByNode(nodeId, groupId, domain, events[])
+    AppSync->>Resolver: JS Resolver (Pipeline)
+    Resolver->>DynamoDB: checkGroupExists
+    Resolver->>DynamoDB: BatchWriteItem: イベント保存 (TTL 10秒)
+    DynamoDB-->>Resolver: Success
+    Resolver-->>AppSync: RecordEventsPayload (nextSince)
+    AppSync-->>Node1: Response
+
+    loop 2秒間隔
+        Node2->>AppSync: getEventsSince(groupId, domain, since)
+        AppSync->>Resolver: JS Resolver (Unit)
+        Resolver->>DynamoDB: Query: pk=GROUP#id@domain AND sk > EVENT#since
+        DynamoDB-->>Resolver: Items (Event[])
+        Resolver-->>AppSync: Event[]
+        AppSync-->>Node2: Response
     end
 ```
 
@@ -299,7 +330,9 @@ Mesh v2 は Single Table Design を採用し、1つのテーブルにすべて�
   "hostId": "node-001",
   "createdAt": "2026-01-01T00:00:00Z",
   "expiresAt": 1704067200,
-  "ttl": 1704067200
+  "ttl": 1704067200,
+  "useWebSocket": true,
+  "pollingIntervalSeconds": 2
 }
 ```
 
@@ -376,7 +409,8 @@ Mesh v2 は Single Table Design を採用し、1つのテーブルにすべて�
   "groupId": "abc123",
   "domain": "192.168.1.1",
   "payload": "{\"button\":\"A\"}",
-  "timestamp": "2026-01-01T12:00:00.123Z"
+  "timestamp": "2026-01-01T12:00:00.123Z",
+  "ttl": 1704067210
 }
 ```
 
