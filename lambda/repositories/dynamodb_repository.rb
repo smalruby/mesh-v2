@@ -1,4 +1,5 @@
 require "aws-sdk-dynamodb"
+require "securerandom"
 require_relative "../domain/group"
 
 # DynamoDB Repository
@@ -182,6 +183,46 @@ class DynamoDBRepository
       }
     )
 
+    true
+  rescue Aws::DynamoDB::Errors::ServiceError => e
+    puts "DynamoDB Error: #{e.message}"
+    false
+  end
+
+  # イベントをバッチ保存
+  def record_events(group_id, domain, node_id, events, ttl_seconds)
+    return false unless @dynamodb
+
+    server_timestamp = Time.now.iso8601
+    ttl = Time.now.to_i + ttl_seconds
+
+    # DynamoDB BatchWriteItem 操作
+    # 最大25アイテムまで
+    events.each_slice(25) do |slice|
+      put_requests = slice.map do |event|
+        {
+          put_request: {
+            item: {
+              "pk" => "GROUP##{group_id}@#{domain}",
+              "sk" => "EVENT##{server_timestamp}##{SecureRandom.uuid}",
+              "eventName" => event["eventName"],
+              "firedByNodeId" => node_id,
+              "groupId" => group_id,
+              "domain" => domain,
+              "payload" => event["payload"],
+              "timestamp" => server_timestamp,
+              "ttl" => ttl
+            }
+          }
+        }
+      end
+
+      @dynamodb.batch_write_item(
+        request_items: {
+          @table_name => put_requests
+        }
+      )
+    end
     true
   rescue Aws::DynamoDB::Errors::ServiceError => e
     puts "DynamoDB Error: #{e.message}"

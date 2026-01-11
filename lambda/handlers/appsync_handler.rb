@@ -4,6 +4,7 @@ require_relative "../use_cases/create_group"
 require_relative "../use_cases/dissolve_group"
 require_relative "../use_cases/leave_group"
 require_relative "../use_cases/create_domain"
+require_relative "../use_cases/record_events"
 require_relative "../repositories/dynamodb_repository"
 require "aws-sdk-dynamodb"
 require "json"
@@ -24,11 +25,40 @@ def lambda_handler(event:, context:)
     handle_dissolve_group(arguments)
   when "leaveGroup"
     handle_leave_group(arguments)
+  when "recordEventsByNode"
+    handle_record_events(arguments)
   else
     raise StandardError, "Unknown field: #{field_name}"
   end
   # NOTE: エラーはAppSyncに伝播させる（rescue しない）
   # AppSyncが自動的にGraphQLエラーに変換する
+end
+
+def handle_record_events(arguments)
+  # DynamoDBクライアントとリポジトリの初期化
+  dynamodb = Aws::DynamoDB::Client.new(region: ENV["AWS_REGION"] || "ap-northeast-1")
+  repository = DynamoDBRepository.new(dynamodb)
+
+  # ユースケースの実行
+  use_case = RecordEventsUseCase.new(repository)
+  result = use_case.execute(
+    group_id: arguments["groupId"],
+    domain: arguments["domain"],
+    node_id: arguments["nodeId"],
+    events: arguments["events"],
+    ttl_seconds: (ENV["MESH_EVENT_TTL_SECONDS"] || "10").to_i
+  )
+
+  # エラーハンドリング
+  raise StandardError, result[:error] unless result[:success]
+
+  # AppSync形式にフォーマット
+  {
+    groupId: result[:groupId],
+    domain: result[:domain],
+    recordedCount: result[:recordedCount],
+    nextSince: result[:nextSince]
+  }
 end
 
 def handle_create_group(arguments)

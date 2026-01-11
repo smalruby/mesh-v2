@@ -212,6 +212,40 @@ export class MeshV2Stack extends cdk.Stack {
       this.table
     );
 
+    // None Data Source for event pass-through
+    const noneDataSource = this.api.addNoneDataSource('NoneDataSource');
+
+    // Lambda function for complex operations (Dissolve, Leave, RecordEvents, etc.)
+    const meshV2Lambda = new lambda.Function(this, 'MeshV2LambdaFunction', {
+      functionName: `MeshV2-GraphQL${stageSuffix}`,
+      runtime: lambda.Runtime.RUBY_3_4,
+      handler: 'handlers/appsync_handler.lambda_handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        LANG: 'en_US.UTF-8',
+        LC_ALL: 'en_US.UTF-8',
+        DYNAMODB_TABLE_NAME: this.table.tableName,
+        MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
+        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60',
+        MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
+        MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
+        MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
+        MESH_MAX_CONNECTION_TIME_SECONDS: process.env.MESH_MAX_CONNECTION_TIME_SECONDS || defaultMaxConnTimeSeconds,
+        MESH_EVENT_TTL_SECONDS: process.env.MESH_EVENT_TTL_SECONDS || '10',
+        MESH_POLLING_INTERVAL_SECONDS: process.env.MESH_POLLING_INTERVAL_SECONDS || '2',
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Grant Lambda permissions to DynamoDB
+    this.table.grantReadWriteData(meshV2Lambda);
+
+    // Lambda Data Source
+    const meshV2DataSource = this.api.addLambdaDataSource(
+      'MeshV2LambdaDataSource',
+      meshV2Lambda
+    );
+
     // Function: checkGroupExists (共通のグループ存在確認)
     const checkGroupExistsFunction = new appsync.AppsyncFunction(this, 'CheckGroupExistsFunction', {
       name: 'checkGroupExists',
@@ -295,7 +329,7 @@ export class MeshV2Stack extends cdk.Stack {
 
     // Function 2: Create group if not exists, or return existing group
     const createGroupIfNotExistsFunction = new appsync.AppsyncFunction(this, 'CreateGroupIfNotExistsFunction', {
-      name: 'createGroupIfNotExists',
+      name: 'checkExistingGroup',
       api: this.api,
       dataSource: dynamoDbDataSource,
       runtime: appsync.FunctionRuntime.JS_1_0_0,
@@ -427,9 +461,6 @@ export class MeshV2Stack extends cdk.Stack {
       `)
     });
 
-    // None Data Source for event pass-through
-    const noneDataSource = this.api.addNoneDataSource('NoneDataSource');
-
     // Function: fireEventsByNode (main logic for batch)
     const fireEventsByNodeFunction = new appsync.AppsyncFunction(this, 'FireEventsByNodeFunction', {
       name: 'fireEventsByNode',
@@ -457,31 +488,10 @@ export class MeshV2Stack extends cdk.Stack {
       `)
     });
 
-    // Function: recordEventsByNode (main logic)
-    const recordEventsByNodeFunction = new appsync.AppsyncFunction(this, 'RecordEventsByNodeFunction', {
-      name: 'recordEventsByNode',
-      api: this.api,
-      dataSource: dynamoDbDataSource,
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.recordEventsByNode.js'))
-    });
-
-    // Pipeline Resolver: recordEventsByNode (グループ存在確認 → イベント記録)
-    new appsync.Resolver(this, 'RecordEventsByNodePipelineResolver', {
-      api: this.api,
+    // Mutation: recordEventsByNode (Lambda resolver due to BatchPutItem restrictions in JS)
+    meshV2DataSource.createResolver('RecordEventsByNodeResolver', {
       typeName: 'Mutation',
       fieldName: 'recordEventsByNode',
-      runtime: appsync.FunctionRuntime.JS_1_0_0,
-      pipelineConfig: [checkGroupExistsFunction, recordEventsByNodeFunction],
-      code: appsync.Code.fromInline(`
-        // Pipeline resolver: pass through
-        export function request(ctx) {
-          return {};
-        }
-        export function response(ctx) {
-          return ctx.prev.result;
-        }
-      `)
     });
 
     // Query: getEventsSince
@@ -492,51 +502,20 @@ export class MeshV2Stack extends cdk.Stack {
       code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.getEventsSince.js'))
     });
 
-    // Resolvers for Phase 2-4: dissolveGroup with Lambda
-
-    // Lambda function for dissolveGroup
-    const dissolveGroupLambda = new lambda.Function(this, 'DissolveGroupFunction', {
-      functionName: `MeshV2-DissolveGroup${stageSuffix}`,
-      runtime: lambda.Runtime.RUBY_3_4,
-      handler: 'handlers/appsync_handler.lambda_handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
-      environment: {
-        LANG: 'en_US.UTF-8',
-        LC_ALL: 'en_US.UTF-8',
-        DYNAMODB_TABLE_NAME: this.table.tableName,
-        MESH_SECRET_KEY: process.env.MESH_SECRET_KEY || 'default-secret-key',
-        MESH_HOST_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60',
-        MESH_HOST_HEARTBEAT_TTL_SECONDS: process.env.MESH_HOST_HEARTBEAT_TTL_SECONDS || '150',
-        MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
-        MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
-        MESH_MAX_CONNECTION_TIME_SECONDS: process.env.MESH_MAX_CONNECTION_TIME_SECONDS || defaultMaxConnTimeSeconds,
-      },
-      timeout: cdk.Duration.seconds(30),
-    });
-
-    // Grant Lambda permissions to DynamoDB
-    this.table.grantReadWriteData(dissolveGroupLambda);
-
-    // Lambda Data Source
-    const dissolveGroupDataSource = this.api.addLambdaDataSource(
-      'DissolveGroupDataSource',
-      dissolveGroupLambda
-    );
-
     // Mutation: dissolveGroup (Lambda resolver)
-    dissolveGroupDataSource.createResolver('DissolveGroupResolver', {
+    meshV2DataSource.createResolver('DissolveGroupResolver', {
       typeName: 'Mutation',
       fieldName: 'dissolveGroup',
     });
 
     // Mutation: createDomain (Lambda resolver)
-    dissolveGroupDataSource.createResolver('CreateDomainResolver', {
+    meshV2DataSource.createResolver('CreateDomainResolver', {
       typeName: 'Mutation',
       fieldName: 'createDomain',
     });
 
     // Mutation: leaveGroup (Lambda resolver)
-    dissolveGroupDataSource.createResolver('LeaveGroupResolver', {
+    meshV2DataSource.createResolver('LeaveGroupResolver', {
       typeName: 'Mutation',
       fieldName: 'leaveGroup',
     });

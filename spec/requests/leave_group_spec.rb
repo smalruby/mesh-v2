@@ -17,7 +17,8 @@ RSpec.describe "Leave Group API", type: :request do
       create_res = execute_graphql(create_query, {
         name: group_name,
         hostId: host_id,
-        domain: domain
+        domain: domain,
+        useWebSocket: true
       })
       group_id = create_res["data"]["createGroup"]["id"]
 

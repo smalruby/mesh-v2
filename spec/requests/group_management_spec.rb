@@ -10,7 +10,8 @@ RSpec.describe "Group Management API", type: :request do
       variables = {
         name: "Test Group",
         hostId: "host-#{Time.now.to_i}-001",
-        domain: "test.example.com"
+        domain: "test.example.com",
+        useWebSocket: true
       }
 
       response = execute_graphql(query, variables)
@@ -32,7 +33,8 @@ RSpec.describe "Group Management API", type: :request do
       variables = {
         name: "Test Group",
         hostId: host_id,
-        domain: "test.example.com"
+        domain: "test.example.com",
+        useWebSocket: true
       }
 
       # 1回目
@@ -57,7 +59,8 @@ RSpec.describe "Group Management API", type: :request do
       variables1 = {
         name: "Group A",
         hostId: "host-#{timestamp}-003",
-        domain: "test.example.com"
+        domain: "test.example.com",
+        useWebSocket: true
       }
       response1 = execute_graphql(query, variables1)
       expect(response1["errors"]).to be_nil
@@ -67,7 +70,8 @@ RSpec.describe "Group Management API", type: :request do
       variables2 = {
         name: "Group B",
         hostId: "host-#{timestamp}-004",
-        domain: "test.example.com"
+        domain: "test.example.com",
+        useWebSocket: true
       }
       response2 = execute_graphql(query, variables2)
       expect(response2["errors"]).to be_nil

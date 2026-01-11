@@ -8,8 +8,8 @@ RSpec.describe "Heartbeat API - expiresAt consistency", type: :request do
   it "returns the same expiresAt during renewHeartbeat as createGroup" do
     # 1. Create a group
     create_mutation = <<~GRAPHQL
-      mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!) {
-        createGroup(name: $name, hostId: $hostId, domain: $domain) {
+      mutation CreateGroup($name: String!, $hostId: ID!, $domain: String!, $useWebSocket: Boolean!) {
+        createGroup(name: $name, hostId: $hostId, domain: $domain, useWebSocket: $useWebSocket) {
           id
           expiresAt
         }
@@ -19,7 +19,8 @@ RSpec.describe "Heartbeat API - expiresAt consistency", type: :request do
     create_vars = {
       name: group_name,
       hostId: host_id,
-      domain: domain
+      domain: domain,
+      useWebSocket: true
     }
 
     create_response = execute_graphql(create_mutation, create_vars)
