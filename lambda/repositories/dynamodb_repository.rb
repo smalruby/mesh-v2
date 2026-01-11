@@ -53,6 +53,8 @@ class DynamoDBRepository
         "name" => group.name,
         "hostId" => group.host_id,
         "createdAt" => group.created_at,
+        "useWebSocket" => group.use_websocket,
+        "pollingIntervalSeconds" => group.polling_interval_seconds,
         "gsi_pk" => "GROUP##{group.id}",
         "gsi_sk" => "DOMAIN##{group.domain}"
       }
@@ -194,7 +196,9 @@ class DynamoDBRepository
       name: item["name"],
       host_id: item["hostId"],
       domain: item["domain"],
-      created_at: item["createdAt"]
+      created_at: item["createdAt"],
+      use_websocket: item.key?("useWebSocket") ? item["useWebSocket"] : true,
+      polling_interval_seconds: item["pollingIntervalSeconds"]
     )
   end
 end

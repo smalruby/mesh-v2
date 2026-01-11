@@ -38,6 +38,23 @@ Mesh v2 is a cloud-based backend system that enables real-time data sharing and 
 - **Event Rate**: 2 events/sec/group
 - **Total Write Load**: 170 TPS
 
+## Event Communication Protocols
+
+Mesh v2 supports two protocols for event communication:
+
+### 1. WebSocket Protocol (Primary)
+- **Mechanism**: AppSync Subscriptions (WebSocket).
+- **Features**: Real-time, low latency, low cost.
+- **Requirement**: Network environment must allow `wss://` protocol.
+
+### 2. Polling Protocol (Fallback)
+- **Mechanism**: `recordEventsByNode` mutation (save to DynamoDB) + `getEventsSince` query (polling).
+- **Features**: HTTPS only, works behind strict firewalls/filters.
+- **Latency**: Up to 2 seconds (default polling interval).
+- **TTL**: Events are automatically deleted after 10 seconds to minimize storage costs.
+
+Clients automatically detect WebSocket availability during group creation and switch to the Polling protocol if necessary.
+
 ## Event Batching
 
 Mesh v2 supports batch event sending to optimize AWS AppSync Subscription costs and preserve event timing.

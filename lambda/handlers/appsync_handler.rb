@@ -41,7 +41,8 @@ def handle_create_group(arguments)
   group = use_case.execute(
     name: arguments["name"],
     host_id: arguments["hostId"],
-    domain: arguments["domain"]
+    domain: arguments["domain"],
+    use_websocket: arguments.key?("useWebSocket") ? arguments["useWebSocket"] : true
   )
 
   # AppSync形式にフォーマット
@@ -110,7 +111,9 @@ def format_group_response(group)
     fullId: group.full_id,
     name: group.name,
     hostId: group.host_id,
-    createdAt: group.created_at
+    createdAt: group.created_at,
+    useWebSocket: group.use_websocket,
+    pollingIntervalSeconds: group.polling_interval_seconds
   }
 end
 

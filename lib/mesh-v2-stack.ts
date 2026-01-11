@@ -124,7 +124,10 @@ export class MeshV2Stack extends cdk.Stack {
         MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120',
         MESH_MEMBER_HEARTBEAT_TTL_SECONDS: process.env.MESH_MEMBER_HEARTBEAT_TTL_SECONDS || '600',
         MESH_MAX_CONNECTION_TIME_SECONDS: process.env.MESH_MAX_CONNECTION_TIME_SECONDS || defaultMaxConnTimeSeconds,
+        MESH_EVENT_TTL_SECONDS: process.env.MESH_EVENT_TTL_SECONDS || '10',
+        MESH_POLLING_INTERVAL_SECONDS: process.env.MESH_POLLING_INTERVAL_SECONDS || '2',
       },
+
       xrayEnabled: true,
       logConfig: {
         fieldLogLevel: appsync.FieldLogLevel.ALL,
@@ -452,6 +455,41 @@ export class MeshV2Stack extends cdk.Stack {
           return ctx.prev.result;
         }
       `)
+    });
+
+    // Function: recordEventsByNode (main logic)
+    const recordEventsByNodeFunction = new appsync.AppsyncFunction(this, 'RecordEventsByNodeFunction', {
+      name: 'recordEventsByNode',
+      api: this.api,
+      dataSource: dynamoDbDataSource,
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Mutation.recordEventsByNode.js'))
+    });
+
+    // Pipeline Resolver: recordEventsByNode (グループ存在確認 → イベント記録)
+    new appsync.Resolver(this, 'RecordEventsByNodePipelineResolver', {
+      api: this.api,
+      typeName: 'Mutation',
+      fieldName: 'recordEventsByNode',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      pipelineConfig: [checkGroupExistsFunction, recordEventsByNodeFunction],
+      code: appsync.Code.fromInline(`
+        // Pipeline resolver: pass through
+        export function request(ctx) {
+          return {};
+        }
+        export function response(ctx) {
+          return ctx.prev.result;
+        }
+      `)
+    });
+
+    // Query: getEventsSince
+    dynamoDbDataSource.createResolver('GetEventsSinceResolver', {
+      typeName: 'Query',
+      fieldName: 'getEventsSince',
+      runtime: appsync.FunctionRuntime.JS_1_0_0,
+      code: appsync.Code.fromAsset(path.join(__dirname, '../js/resolvers/Query.getEventsSince.js'))
     });
 
     // Resolvers for Phase 2-4: dissolveGroup with Lambda

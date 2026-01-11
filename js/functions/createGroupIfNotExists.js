@@ -16,7 +16,7 @@ export function request(ctx) {
   }
 
   // 新規グループ作成
-  const { name, hostId, domain, maxConnectionTimeSeconds } = ctx.args;
+  const { name, hostId, domain, maxConnectionTimeSeconds, useWebSocket } = ctx.args;
 
   // Domain文字列のバリデーション（最大256文字）
   if (domain.length > 256) {
@@ -39,6 +39,9 @@ export function request(ctx) {
     }
     actualMaxSeconds = maxConnectionTimeSeconds;
   }
+
+  // Polling interval decision
+  const pollingInterval = useWebSocket ? null : +(ctx.env.MESH_POLLING_INTERVAL_SECONDS || '2');
 
   // グループID生成
   const groupId = util.autoId();
@@ -65,6 +68,8 @@ export function request(ctx) {
       expiresAt: expiresAt,
       heartbeatAt: nowEpoch,
       ttl: ttl,
+      useWebSocket: useWebSocket,
+      pollingIntervalSeconds: pollingInterval,
       // GSI用（groupId -> domain の逆引き検索）
       gsi_pk: `GROUP#${groupId}`,
       gsi_sk: `DOMAIN#${domain}`
@@ -91,7 +96,9 @@ export function response(ctx) {
       hostId: ctx.stash.existingGroup.hostId,
       createdAt: ctx.stash.existingGroup.createdAt,
       expiresAt: ctx.stash.existingGroup.expiresAt,
-      heartbeatIntervalSeconds: heartbeatIntervalSeconds
+      heartbeatIntervalSeconds: heartbeatIntervalSeconds,
+      useWebSocket: ctx.stash.existingGroup.useWebSocket !== false, // デフォルト true
+      pollingIntervalSeconds: ctx.stash.existingGroup.pollingIntervalSeconds
     };
   }
 
@@ -104,6 +111,8 @@ export function response(ctx) {
     hostId: ctx.result.hostId,
     createdAt: ctx.result.createdAt,
     expiresAt: ctx.result.expiresAt,
-    heartbeatIntervalSeconds: heartbeatIntervalSeconds
+    heartbeatIntervalSeconds: heartbeatIntervalSeconds,
+    useWebSocket: ctx.result.useWebSocket,
+    pollingIntervalSeconds: ctx.result.pollingIntervalSeconds
   };
 }

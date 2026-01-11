@@ -20,6 +20,8 @@ RSpec.describe CreateGroupUseCase do
           expect(group.domain).to eq("example.com")
           expect(group.id).to be_present
           expect(group.created_at).to match_iso8601
+          expect(group.use_websocket).to eq(true)
+          expect(group.polling_interval_seconds).to be_nil
         end
 
         result = use_case.execute(
@@ -32,6 +34,24 @@ RSpec.describe CreateGroupUseCase do
         expect(result.name).to eq("Test Group")
         expect(result.host_id).to eq("host-001")
         expect(result.domain).to eq("example.com")
+      end
+
+      it "use_websocket: false の場合、ポーリング間隔が設定される" do
+        allow(repository).to receive(:find_group_by_host_and_domain).and_return(nil)
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("MESH_POLLING_INTERVAL_SECONDS").and_return("5")
+
+        expect(repository).to receive(:save_group) do |group|
+          expect(group.use_websocket).to eq(false)
+          expect(group.polling_interval_seconds).to eq(5)
+        end
+
+        use_case.execute(
+          name: "Polling Group",
+          host_id: "host-001",
+          domain: "example.com",
+          use_websocket: false
+        )
       end
 
       it "グループIDが自動生成される" do
