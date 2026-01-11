@@ -304,7 +304,12 @@ export class MeshV2Stack extends cdk.Stack {
           return {};
         }
         export function response(ctx) {
-          return ctx.prev.result;
+          const metadata = ctx.stash.nodeMetadata;
+          if (!metadata) return null;
+          return {
+            ...ctx.prev.result,
+            createdAt: metadata.createdAt || null
+          };
         }
       `)
     });

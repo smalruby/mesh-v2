@@ -47,6 +47,7 @@ export function response(ctx) {
   return {
     groupId: groupId,
     domain: domain,
+    createdAt: group.createdAt,
     expiresAt: group.expiresAt,
     heartbeatIntervalSeconds: +(ctx.env.MESH_HOST_HEARTBEAT_INTERVAL_SECONDS || '60')
   };

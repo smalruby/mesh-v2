@@ -12,18 +12,18 @@ class RecordEventsUseCase
     return { success: false, error: "Group not found" } unless group
 
     # 2. イベントの保存
-    success = @repository.record_events(group_id, domain, node_id, events, ttl_seconds)
+    result = @repository.record_events(group_id, domain, node_id, events, ttl_seconds)
     
-    if success
+    if result[:success]
       { 
         success: true, 
         groupId: group_id, 
         domain: domain, 
-        recordedCount: events.length,
-        nextSince: "EVENT##{Time.now.iso8601}"
+        recordedCount: result[:recordedCount],
+        nextSince: result[:last_sk] || "EVENT##{Time.now.iso8601}"
       }
     else
-      { success: false, error: "Failed to record events" }
+      { success: false, error: result[:error] || "Failed to record events" }
     end
   end
 end

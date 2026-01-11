@@ -54,6 +54,7 @@ class DynamoDBRepository
         "name" => group.name,
         "hostId" => group.host_id,
         "createdAt" => group.created_at,
+        "expiresAt" => group.expires_at,
         "useWebSocket" => group.use_websocket,
         "pollingIntervalSeconds" => group.polling_interval_seconds,
         "gsi_pk" => "GROUP##{group.id}",
@@ -191,20 +192,23 @@ class DynamoDBRepository
 
   # イベントをバッチ保存
   def record_events(group_id, domain, node_id, events, ttl_seconds)
-    return false unless @dynamodb
+    return {success: false, error: "DynamoDB client not initialized"} unless @dynamodb
 
     server_timestamp = Time.now.iso8601
     ttl = Time.now.to_i + ttl_seconds
+    last_sk = nil
 
     # DynamoDB BatchWriteItem 操作
     # 最大25アイテムまで
     events.each_slice(25) do |slice|
       put_requests = slice.map do |event|
+        sk = "EVENT##{server_timestamp}##{SecureRandom.uuid}"
+        last_sk = sk
         {
           put_request: {
             item: {
               "pk" => "GROUP##{group_id}@#{domain}",
-              "sk" => "EVENT##{server_timestamp}##{SecureRandom.uuid}",
+              "sk" => sk,
               "eventName" => event["eventName"],
               "firedByNodeId" => node_id,
               "groupId" => group_id,
@@ -223,10 +227,10 @@ class DynamoDBRepository
         }
       )
     end
-    true
+    {success: true, recordedCount: events.length, last_sk: last_sk}
   rescue Aws::DynamoDB::Errors::ServiceError => e
     puts "DynamoDB Error: #{e.message}"
-    false
+    {success: false, error: e.message}
   end
 
   private
@@ -238,6 +242,7 @@ class DynamoDBRepository
       host_id: item["hostId"],
       domain: item["domain"],
       created_at: item["createdAt"],
+      expires_at: item["expiresAt"],
       use_websocket: item.key?("useWebSocket") ? item["useWebSocket"] : true,
       polling_interval_seconds: item["pollingIntervalSeconds"]
     )

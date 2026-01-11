@@ -31,6 +31,7 @@ export function request(ctx) {
           domain: domain,
           name: `Node ${nodeId}`,
           joinedAt: now,
+          createdAt: ctx.stash.group ? ctx.stash.group.createdAt : now,
           ttl: ttl
         })
       },
@@ -49,6 +50,7 @@ export function request(ctx) {
           domain: domain,
           name: `Node ${nodeId}`,
           joinedAt: now,
+          createdAt: ctx.stash.group ? ctx.stash.group.createdAt : now,
           ttl: ttl
         })
       }
@@ -71,6 +73,7 @@ export function response(ctx) {
     name: `Node ${nodeId}`,
     groupId: groupId,
     domain: domain,
+    createdAt: group ? group.createdAt : null,
     expiresAt: group ? group.expiresAt : null,
     heartbeatIntervalSeconds: +(ctx.env.MESH_MEMBER_HEARTBEAT_INTERVAL_SECONDS || '120'),
     useWebSocket: group ? group.useWebSocket !== false : true,
