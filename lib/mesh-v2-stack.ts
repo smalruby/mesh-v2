@@ -152,6 +152,58 @@ export class MeshV2Stack extends cdk.Stack {
         },
         rules: [
           {
+            name: 'AllowPreflightOptions',
+            priority: 0,
+            action: { allow: {} },
+            statement: {
+              andStatement: {
+                statements: [
+                  {
+                    byteMatchStatement: {
+                      fieldToMatch: {
+                        method: {},
+                      },
+                      positionalConstraint: 'EXACTLY',
+                      searchString: 'OPTIONS',
+                      textTransformations: [
+                        {
+                          priority: 0,
+                          type: 'NONE',
+                        },
+                      ],
+                    },
+                  },
+                  {
+                    orStatement: {
+                      statements: allowedOrigins.map(origin => ({
+                        byteMatchStatement: {
+                          fieldToMatch: {
+                            singleHeader: {
+                              Name: 'origin',
+                            },
+                          },
+                          positionalConstraint: 'EXACTLY',
+                          searchString: origin,
+                          textTransformations: [
+                            {
+                              priority: 0,
+                              type: 'LOWERCASE',
+                            },
+                          ],
+                        },
+                      })),
+                    },
+                  },
+                ],
+              },
+            },
+            visibilityConfig: {
+              cloudWatchMetricsEnabled: true,
+              metricName: 'AllowPreflightOptions',
+              sampledRequestsEnabled: true,
+            },
+          },
+          {
             name: 'AllowSpecificOrigins',
             priority: 1,
             action: { allow: {} },
@@ -161,7 +213,7 @@ export class MeshV2Stack extends cdk.Stack {
                   byteMatchStatement: {
                     fieldToMatch: {
                       singleHeader: {
-                        name: 'origin',
+                        Name: 'origin',
                       },
                     },
                     positionalConstraint: 'EXACTLY',
