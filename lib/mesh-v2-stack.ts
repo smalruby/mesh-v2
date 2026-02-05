@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib/core';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
@@ -134,114 +133,6 @@ export class MeshV2Stack extends cdk.Stack {
         excludeVerboseContent: false,
       },
     });
-
-    // WAF configuration (Only for production)
-    if (stage === 'prod') {
-      const allowedOrigins = [
-        'https://smalruby.app',
-        'https://smalruby.jp'
-      ];
-
-      const webAcl = new wafv2.CfnWebACL(this, 'MeshV2ApiWebAcl', {
-        defaultAction: { block: {} },
-        scope: 'REGIONAL',
-        visibilityConfig: {
-          cloudWatchMetricsEnabled: true,
-          metricName: 'MeshV2ApiWebAcl',
-          sampledRequestsEnabled: true,
-        },
-        rules: [
-          {
-            name: 'AllowPreflightOptions',
-            priority: 0,
-            action: { allow: {} },
-            statement: {
-              andStatement: {
-                statements: [
-                  {
-                    byteMatchStatement: {
-                      fieldToMatch: {
-                        method: {},
-                      },
-                      positionalConstraint: 'EXACTLY',
-                      searchString: 'OPTIONS',
-                      textTransformations: [
-                        {
-                          priority: 0,
-                          type: 'NONE',
-                        },
-                      ],
-                    },
-                  },
-                  {
-                    orStatement: {
-                      statements: allowedOrigins.map(origin => ({
-                        byteMatchStatement: {
-                          fieldToMatch: {
-                            singleHeader: {
-                              Name: 'origin',
-                            },
-                          },
-                          positionalConstraint: 'EXACTLY',
-                          searchString: origin,
-                          textTransformations: [
-                            {
-                              priority: 0,
-                              type: 'LOWERCASE',
-                            },
-                          ],
-                        },
-                      })),
-                    },
-                  },
-                ],
-              },
-            },
-            visibilityConfig: {
-              cloudWatchMetricsEnabled: true,
-              metricName: 'AllowPreflightOptions',
-              sampledRequestsEnabled: true,
-            },
-          },
-          {
-            name: 'AllowSpecificOrigins',
-            priority: 1,
-            action: { allow: {} },
-            statement: {
-              orStatement: {
-                statements: allowedOrigins.map(origin => ({
-                  byteMatchStatement: {
-                    fieldToMatch: {
-                      singleHeader: {
-                        Name: 'origin',
-                      },
-                    },
-                    positionalConstraint: 'EXACTLY',
-                    searchString: origin,
-                    textTransformations: [
-                      {
-                        priority: 0,
-                        type: 'LOWERCASE',
-                      },
-                    ],
-                  },
-                })),
-              },
-            },
-            visibilityConfig: {
-              cloudWatchMetricsEnabled: true,
-              metricName: 'AllowSpecificOrigins',
-              sampledRequestsEnabled: true,
-            },
-          },
-        ],
-      });
-
-      new wafv2.CfnWebACLAssociation(this, 'MeshV2ApiWebAclAssociation', {
-        resourceArn: this.api.arn,
-        webAclArn: webAcl.attrArn,
-      });
-    }
 
     // Route53 Alias record for Custom Domain
     if (customDomain && zone) {

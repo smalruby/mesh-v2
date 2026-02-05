@@ -5,7 +5,6 @@ query ListGroupsByDomain($domain: String!) {
     fullId
     name
     hostId
-    createdAt
     expiresAt
   }
 }

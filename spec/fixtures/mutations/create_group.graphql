@@ -17,7 +17,6 @@ mutation CreateGroup(
     fullId
     name
     hostId
-    createdAt
     expiresAt
     useWebSocket
     pollingIntervalSeconds

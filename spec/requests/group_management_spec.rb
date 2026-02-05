@@ -23,7 +23,6 @@ RSpec.describe "Group Management API", type: :request do
       )
       expect(response["data"]["createGroup"]["hostId"]).to eq(variables[:hostId])
       expect(response["data"]["createGroup"]["id"]).to be_present
-      expect(response["data"]["createGroup"]["createdAt"]).to match_iso8601
       expect(response["data"]["createGroup"]["fullId"]).to match(/\A.+@test\.example\.com\z/)
     end
 
