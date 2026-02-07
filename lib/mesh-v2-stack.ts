@@ -127,10 +127,10 @@ export class MeshV2Stack extends cdk.Stack {
         MESH_POLLING_INTERVAL_SECONDS: process.env.MESH_POLLING_INTERVAL_SECONDS || '2',
       },
 
-      xrayEnabled: true,
+      xrayEnabled: stage !== 'prod',
       logConfig: {
-        fieldLogLevel: appsync.FieldLogLevel.ALL,
-        excludeVerboseContent: false,
+        fieldLogLevel: stage === 'prod' ? appsync.FieldLogLevel.ERROR : appsync.FieldLogLevel.ALL,
+        excludeVerboseContent: stage === 'prod',
       },
     });
 
